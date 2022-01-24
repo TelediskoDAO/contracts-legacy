@@ -15,7 +15,14 @@ contract VotingSnapshot is Voting, Snapshottable {
         address[] delegates;
     }
 
+    struct SnapshotsTotalVotingPower {
+        uint256[] ids;
+        uint256[] values;
+    }
+
     mapping(address => Snapshots) _delegationSnapshots;
+    SnapshotsTotalVotingPower private _votingPowerSnaphots;
+
 
     function snapshot() public virtual override returns (uint256) {
         return _snapshot();
@@ -43,6 +50,16 @@ contract VotingSnapshot is Voting, Snapshottable {
         return valid ? snapshots.votes[index] : getVotes(account);
     }
 
+    function getTotalVotingPowerAt(uint256 snapshotId)
+        public
+        view
+        returns (uint256)
+    {
+        (bool valid, uint256 index) = _indexAt(snapshotId, _votingPowerSnaphots.ids);
+
+        return valid ? _votingPowerSnaphots.values[index] : getTotalVotingPower();
+    }
+
     function _updateSnapshot(
         Snapshots storage snapshots,
         address currentDelegate,
@@ -53,6 +70,9 @@ contract VotingSnapshot is Voting, Snapshottable {
             snapshots.ids.push(currentId);
             snapshots.delegates.push(currentDelegate);
             snapshots.votes.push(currentVotes);
+
+            _votingPowerSnaphots.ids.push(currentId);
+            _votingPowerSnaphots.values.push(getTotalVotingPower());
         }
     }
 
