@@ -54,10 +54,6 @@ contract Voting is AccessControl {
         _contributorRole = _shareholderRegistry.CONTRIBUTOR_STATUS();
     }
 
-    function balanceOf(address account) public view returns (uint256) {
-        return _token.balanceOf(account);
-    }
-
     function afterTokenTransfer(
         address from,
         address to,
@@ -119,7 +115,7 @@ contract Voting is AccessControl {
 
         _beforeDelegate(delegator);
 
-        uint256 delegatorBalance = balanceOf(delegator);
+        uint256 delegatorBalance = _token.balanceOf(delegator);
         _delegates[delegator] = newDelegate;
         _delegators[newDelegate] = _delegators[newDelegate] + 1;
         _delegators[currentDelegate] = _delegators[newDelegate] - 1;
