@@ -141,6 +141,10 @@ describe("VotingSnapshot", () => {
       });
     });
 
+    describe("getTotalVotingPowerAt", async () => {
+
+    });
+
     describe("getVotesAt", async () => {
       it("reverts with snapshot id of 0", async () => {
         await expect(votingSnapshot.getVotesAt(anon.address, 0)).revertedWith(
