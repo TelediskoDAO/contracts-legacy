@@ -20,6 +20,7 @@ const AddressZero = ethers.constants.AddressZero;
 
 describe("Voting", () => {
   let managerRole: string;
+  let resolutionRole: string;
   let voting: Voting;
   let token: ERC20Mock;
   let shareholderRegistry: ShareholderRegistryMock;
@@ -62,7 +63,9 @@ describe("Voting", () => {
 
     await voting.deployed();
     managerRole = await voting.MANAGER_ROLE();
+    resolutionRole = await voting.RESOLUTION_ROLE();
     voting.grantRole(managerRole, deployer.address);
+    voting.grantRole(resolutionRole, deployer.address);
 
     await token.deployed();
     await shareholderRegistry.deployed();
@@ -201,6 +204,19 @@ describe("Voting", () => {
       await token.mint(delegator1.address, 10);
       let votingPowerBefore = await voting.getTotalVotingPower();
       await token.connect(delegator1).transfer(noDelegate.address, 10);
+
+      let votingPowerAfter = await voting.getTotalVotingPower();
+
+      expect(votingPowerAfter.toNumber()).equal(
+        votingPowerBefore.toNumber() - 10
+      );
+    });
+
+    it("should decrease voting power when a contributor is removed", async () => {
+      await token.mint(delegator1.address, 10);
+      let votingPowerBefore = await voting.getTotalVotingPower();
+      await shareholderRegistry.setNonContributor(delegator1.address);
+      await voting.afterRemoveContributor(delegator1.address);
 
       let votingPowerAfter = await voting.getTotalVotingPower();
 
@@ -369,6 +385,16 @@ describe("Voting", () => {
         .withArgs(delegator1.address, 10, 1)
         .emit(voting, "DelegateVotesChanged")
         .withArgs(delegator2.address, 11, 20);
+    });
+
+    it.only("should decrease to 0 the voting power of an account when it's removed from contributors", async () => {
+      await token.mint(delegator1.address, 10);
+      await shareholderRegistry.setNonContributor(delegator1.address);
+      await voting.afterRemoveContributor(delegator1.address);
+
+      let votingPowerAfter = await voting.getVotingPower(delegator1.address);
+
+      expect(votingPowerAfter.toNumber()).equal(0);
     });
   });
 });

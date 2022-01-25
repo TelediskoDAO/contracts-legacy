@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract Voting is AccessControl {
     bytes32 public MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public RESOLUTION_ROLE = keccak256("RESOLUTION_ROLE");
 
     IShareholderRegistry _shareholderRegistry;
     IERC20 _token;
@@ -52,6 +53,26 @@ contract Voting is AccessControl {
     {
         _shareholderRegistry = shareholderRegistry;
         _contributorRole = _shareholderRegistry.CONTRIBUTOR_STATUS();
+    }
+
+    function afterRemoveContributor(address account)
+        external
+        onlyRole(RESOLUTION_ROLE)
+    {
+        address delegated = getDelegate(account);
+        uint256 votingPower = getVotingPower(delegated);
+
+        if (delegated != account) {
+            _delegate(account, account);
+
+            if (votingPower > 0) {
+                _moveVotingPower(delegated, account, votingPower);
+            }
+        }
+        else {
+            _totalVotingPower -= votingPower;
+            _votingPower[account] = 0;
+        }
     }
 
     /// @dev Hook to be called by the companion token upon token transfer
@@ -156,9 +177,12 @@ contract Voting is AccessControl {
                 _beforeMoveVotingPower(from);
                 uint256 oldVotingPower = _votingPower[from];
                 _votingPower[from] = oldVotingPower - amount;
-                emit DelegateVotesChanged(from, oldVotingPower, _votingPower[from]);
-            }
-            else {
+                emit DelegateVotesChanged(
+                    from,
+                    oldVotingPower,
+                    _votingPower[from]
+                );
+            } else {
                 _beforeUpdateTotalVotingPower();
                 _totalVotingPower += amount;
             }
@@ -168,8 +192,7 @@ contract Voting is AccessControl {
                 uint256 oldVotingPower = _votingPower[to];
                 _votingPower[to] = oldVotingPower + amount;
                 emit DelegateVotesChanged(to, oldVotingPower, _votingPower[to]);
-            }
-            else {
+            } else {
                 _beforeUpdateTotalVotingPower();
                 _totalVotingPower -= amount;
             }
