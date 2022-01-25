@@ -64,14 +64,10 @@ contract Voting is AccessControl {
 
         if (delegated != account) {
             _delegate(account, account);
-
-            if (votingPower > 0) {
-                _moveVotingPower(delegated, account, votingPower);
-            }
         }
-        else {
-            _totalVotingPower -= votingPower;
-            _votingPower[account] = 0;
+
+        if (votingPower > 0) {
+            _moveVotingPower(delegated, address(0), votingPower);
         }
     }
 

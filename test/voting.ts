@@ -11,6 +11,7 @@ import {
   ShareholderRegistryMock__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { resourceUsage } from "process";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -109,6 +110,16 @@ describe("Voting", () => {
       voting
         .connect(noDelegate)
         .setShareholderRegistry(shareholderRegistry.address);
+    });
+
+    it("should throw an error when anyone but the RESOLUTION calls afterRemoveContributor", async () => {
+      let errorMessage = `AccessControl: account ${noDelegate.address.toLowerCase()} is missing role ${resolutionRole.toLowerCase()}`;
+      await expect(
+        voting.connect(noDelegate).afterRemoveContributor(delegator1.address)
+      ).revertedWith(errorMessage);
+
+      voting.grantRole(resolutionRole, noDelegate.address);
+      voting.connect(noDelegate).afterRemoveContributor(delegator1.address);
     });
   });
 
@@ -387,7 +398,7 @@ describe("Voting", () => {
         .withArgs(delegator2.address, 11, 20);
     });
 
-    it.only("should decrease to 0 the voting power of an account when it's removed from contributors", async () => {
+    it("should decrease to 0 the voting power of an account when it's removed from contributors", async () => {
       await token.mint(delegator1.address, 10);
       await shareholderRegistry.setNonContributor(delegator1.address);
       await voting.afterRemoveContributor(delegator1.address);
