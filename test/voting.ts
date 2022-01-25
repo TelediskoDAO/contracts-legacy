@@ -281,7 +281,7 @@ describe("Voting", () => {
       await expect(
         voting.connect(delegator2).delegate(delegator1.address)
       ).revertedWith(
-        "Voting: the proposed delegatee has itself a delegate. No sub-delegations allowed."
+        "Voting: the proposed delegatee already has a delegate. No sub-delegations allowed."
       );
     });
 
@@ -305,6 +305,12 @@ describe("Voting", () => {
       await expect(
         voting.connect(delegator1).delegate(nonContributor.address)
       ).revertedWith("Voting: only contributors can be delegated.");
+    });
+
+    it("should throw an error when delegating a contributor that has not delegated itself first", async () => {
+      await expect(
+        voting.connect(delegator1).delegate(noDelegate.address)
+      ).revertedWith("Voting: the proposed delegate should delegate itself first.");
     });
 
     it("should emit an event", async () => {

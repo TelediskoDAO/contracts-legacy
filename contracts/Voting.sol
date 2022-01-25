@@ -138,13 +138,17 @@ contract Voting is AccessControl {
             "Voting: the proposed delegate is already your delegate."
         );
 
-        address currentDelegateeDelegate = getDelegate(newDelegate);
-        require(
-            currentDelegateeDelegate == newDelegate ||
-                currentDelegateeDelegate == address(0) ||
-                newDelegate == delegator,
-            "Voting: the proposed delegatee has itself a delegate. No sub-delegations allowed."
-        );
+        if (delegator != newDelegate) {
+            address currentDelegateeDelegate = getDelegate(newDelegate);
+            require(
+                currentDelegateeDelegate != address(0),
+                "Voting: the proposed delegate should delegate itself first."
+            );
+            require(
+                currentDelegateeDelegate == newDelegate,
+                "Voting: the proposed delegatee already has a delegate. No sub-delegations allowed."
+            );
+        }
 
         require(
             _delegators[delegator] <= 1,
