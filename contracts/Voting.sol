@@ -142,6 +142,7 @@ contract Voting is AccessControl {
                 emit DelegateVotesChanged(from, oldVotes, _votes[from]);
             }
             else {
+                _beforeUpdateTotalVotingPower();
                 _totalVotingPower += amount;
             }
 
@@ -152,6 +153,7 @@ contract Voting is AccessControl {
                 emit DelegateVotesChanged(to, oldVotes, _votes[to]);
             }
             else {
+                _beforeUpdateTotalVotingPower();
                 _totalVotingPower -= amount;
             }
         }
@@ -160,4 +162,6 @@ contract Voting is AccessControl {
     function _beforeDelegate(address delegator) internal virtual {}
 
     function _beforeMoveVotingPower(address account) internal virtual {}
+
+    function _beforeUpdateTotalVotingPower() internal virtual {}
 }
