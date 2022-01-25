@@ -14,20 +14,20 @@ contract Voting is AccessControl {
     bytes32 private _contributorRole;
 
     mapping(address => address) _delegates;
-    mapping(address => uint256) _votes;
+    mapping(address => uint256) _votingPower;
     mapping(address => uint256) _delegators;
 
     uint256 _totalVotingPower;
 
     event DelegateChanged(
-        address delegator,
+        address indexed delegator,
         address currentDelegate,
         address newDelegate
     );
     event DelegateVotesChanged(
-        address account,
-        uint256 oldVotes,
-        uint256 newVotes
+        address indexed account,
+        uint256 oldVotingPower,
+        uint256 newVotingPower
     );
 
     constructor() {
@@ -70,8 +70,8 @@ contract Voting is AccessControl {
         return _delegates[account];
     }
 
-    function getVotes(address account) public view returns (uint256) {
-        return _votes[account];
+    function getVotingPower(address account) public view returns (uint256) {
+        return _votingPower[account];
     }
 
     function getTotalVotingPower() public view returns (uint256) {
@@ -137,9 +137,9 @@ contract Voting is AccessControl {
         if (from != to && amount > 0) {
             if (from != address(0)) {
                 _beforeMoveVotingPower(from);
-                uint256 oldVotes = _votes[from];
-                _votes[from] = oldVotes - amount;
-                emit DelegateVotesChanged(from, oldVotes, _votes[from]);
+                uint256 oldVotingPower = _votingPower[from];
+                _votingPower[from] = oldVotingPower - amount;
+                emit DelegateVotesChanged(from, oldVotingPower, _votingPower[from]);
             }
             else {
                 _beforeUpdateTotalVotingPower();
@@ -148,9 +148,9 @@ contract Voting is AccessControl {
 
             if (to != address(0)) {
                 _beforeMoveVotingPower(to);
-                uint256 oldVotes = _votes[to];
-                _votes[to] = oldVotes + amount;
-                emit DelegateVotesChanged(to, oldVotes, _votes[to]);
+                uint256 oldVotingPower = _votingPower[to];
+                _votingPower[to] = oldVotingPower + amount;
+                emit DelegateVotesChanged(to, oldVotingPower, _votingPower[to]);
             }
             else {
                 _beforeUpdateTotalVotingPower();
