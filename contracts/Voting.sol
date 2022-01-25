@@ -54,6 +54,12 @@ contract Voting is AccessControl {
         _contributorRole = _shareholderRegistry.CONTRIBUTOR_STATUS();
     }
 
+    /// @dev Hook to be called by the companion token upon token transfer
+    /// @notice Only the companion token can call this method
+    /// @notice The voting power transfer logic relies on the correct usage of this hook from the companion token
+    /// @param from The sender's address
+    /// @param to The receiver's address
+    /// @param amount The amount sent
     function afterTokenTransfer(
         address from,
         address to,
@@ -62,18 +68,33 @@ contract Voting is AccessControl {
         _moveVotingPower(getDelegate(from), getDelegate(to), amount);
     }
 
+    /// @dev Returns the account's current delegate
+    /// @param account The account whose delegate is requested
+    /// @return Account's voting power
     function getDelegate(address account) public view returns (address) {
         return _delegates[account];
     }
 
+    /// @dev Returns the amount of valid votes for a given address
+    /// @notice An address that is not a contributor, will have always 0 voting power
+    /// @notice An address that has not delegated at least itself, will have always 0 voting power
+    /// @param account The account whose voting power is requested
+    /// @return Account's voting power
     function getVotingPower(address account) public view returns (uint256) {
         return _votingPower[account];
     }
 
+    /// @dev Returns the total amount of valid votes
+    /// @notice It's the sum of all tokens owned by contributors who has been at least delegated to themselves
+    /// @return Total voting power
     function getTotalVotingPower() public view returns (uint256) {
         return _totalVotingPower;
     }
 
+    /// @dev Allows sender to delegate another address for voting
+    /// @notice The first address to be delegated must be the sender itself
+    /// @notice Sub-delegation is not allowed
+    /// @param newDelegate Destination address of module transaction.
     function delegate(address newDelegate) public {
         require(
             _shareholderRegistry.isAtLeast(_contributorRole, msg.sender),
