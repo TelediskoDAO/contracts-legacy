@@ -607,7 +607,7 @@ describe("Voting", () => {
       expect(await voting.getVotingPower(delegated1.address)).equal(8);
     });
 
-    it.only("when A delegates B and then B loses its contributor status, then the DAO mints new tokens to A, the total voting power should be the original one minus B plus the new tokens", async () => {
+    it("when A delegates B and then B loses its contributor status, then the DAO mints new tokens to A, the total voting power should be the original one minus B plus the new tokens", async () => {
       await token.mint(delegator1.address, 10);
       await token.mint(delegated1.address, 8);
       await voting.connect(delegator1).delegate(delegated1.address);
