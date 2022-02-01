@@ -65,7 +65,7 @@ contract TelediskoTokenSnapshot is TelediskoToken, Snapshottable {
         address from,
         address to,
         uint256 amount
-    ) internal virtual override {
+    ) internal override {
         super._beforeTokenTransfer(from, to, amount);
 
         if (from == address(0)) {
