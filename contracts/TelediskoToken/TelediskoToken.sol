@@ -13,18 +13,23 @@ contract TelediskoToken is TelediskoTokenSnapshot, AccessControl {
         TelediskoTokenSnapshot(name, symbol)
     {}
 
-    function setVoting(IVoting voting) external onlyRole(MANAGER_ROLE) {
+    function setVoting(IVoting voting)
+        external
+        override
+        onlyRole(MANAGER_ROLE)
+    {
         _setVoting(voting);
     }
 
     function setShareholderRegistry(IShareholderRegistry shareholderRegistry)
         external
+        override
         onlyRole(MANAGER_ROLE)
     {
         _setShareholderRegistry(shareholderRegistry);
     }
 
-    function mint(address to, uint256 amount) public onlyRole(RESOLUTION_ROLE) {
+    function mint(address to, uint256 amount) public override onlyRole(RESOLUTION_ROLE) {
         _mint(to, amount);
     }
 }

@@ -12,6 +12,21 @@ contract TelediskoTokenBase is ERC20 {
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
+    function setVoting(IVoting voting) external virtual {
+        _setVoting(voting);
+    }
+
+    function setShareholderRegistry(IShareholderRegistry shareholderRegistry)
+        external
+        virtual
+    {
+        _setShareholderRegistry(shareholderRegistry);
+    }
+
+    function mint(address to, uint256 amount) public virtual {
+        _mint(to, amount);
+    }
+
     function _setVoting(IVoting voting) internal {
         _voting = voting;
     }
