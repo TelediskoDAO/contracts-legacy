@@ -3,10 +3,10 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Arrays.sol";
-import "./TelediskoToken.sol";
+import "./TelediskoTokenBase.sol";
 import "../extensions/Snapshottable.sol";
 
-contract TelediskoTokenSnapshot is TelediskoToken, Snapshottable {
+contract TelediskoTokenSnapshot is TelediskoTokenBase, Snapshottable {
     using Arrays for uint256[];
 
     struct Snapshots {
@@ -18,7 +18,7 @@ contract TelediskoTokenSnapshot is TelediskoToken, Snapshottable {
     Snapshots private _totalSupplySnapshots;
 
     constructor(string memory name, string memory symbol)
-        TelediskoToken(name, symbol)
+        TelediskoTokenBase(name, symbol)
     {}
 
     function snapshot() public override returns (uint256) {
