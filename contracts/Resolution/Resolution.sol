@@ -271,7 +271,6 @@ contract ResolutionManager {
         );
 
         // If sender has a delegate load voting power from TelediskoToken
-        // TODO: change address(0) to msg.address (a voter cannot have delegate 0, only itself or someoneelse)
         if (delegate != msg.sender) {
             votingPower = _telediskoToken.balanceOfAt(
                 msg.sender,
