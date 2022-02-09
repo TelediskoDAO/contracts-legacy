@@ -72,13 +72,17 @@ describe("Resolution", () => {
     );
 
     voting.mock_getDelegateAt(user1.address, user1.address);
+
+    [user1, user2, delegate1].forEach((voter) => {
+      voting.mock_canVoteAt(voter.address, true);
+    });
   });
 
   let resolutionId: number;
   let checkpointId: number;
   beforeEach(async () => {
     let blockTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
-    resolutionId = blockTimestamp + 1;
+    resolutionId = blockTimestamp + 10; // to prevent occasional InvalidInputError errors
     checkpointId = await network.provider.send("evm_snapshot");
     await network.provider.send("evm_setNextBlockTimestamp", [resolutionId]);
   });
@@ -117,6 +121,14 @@ describe("Resolution", () => {
   });
 
   describe("voting prevention logic", async () => {
+    it("should not allow to vote to a non voter", async () => {
+      await voting.mock_canVoteAt(user1.address, false);
+
+      await expect(
+        resolution.connect(user1).vote(resolutionId, true)
+      ).revertedWith("Resolution: account cannot vote");
+    });
+
     it("should not allow to vote on a non approved resolution", async () => {
       await resolution.connect(user1).createResolution("test", 0, false);
 
@@ -290,6 +302,14 @@ describe("Resolution", () => {
         expect(isYes).equal(false);
         expect(hasVoted).equal(true);
         expect(votingPower.eq(42)).true;
+      });
+
+      it("should fail when asking stats for a user who could not vote", async () => {
+        await voting.mock_canVoteAt(user1.address, false);
+
+        await expect(
+          resolution.getVoterVote(resolutionId, user1.address)
+        ).revertedWith("Resolution: account could not vote resolution");
       });
 
       it("should increment total yes when updating from no to yes", async () => {

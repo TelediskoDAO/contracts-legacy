@@ -11,7 +11,6 @@ import {
   ShareholderRegistryMock__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import exp from "constants";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);

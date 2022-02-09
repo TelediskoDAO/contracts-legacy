@@ -168,7 +168,8 @@ contract ResolutionManager {
         )
     {
         Resolution storage resolution = resolutions[resolutionId];
-
+        require(_voting.canVoteAt(voter, resolution.snapshotId), "Resolution: account could not vote resolution");
+        
         isYes = resolution.hasVotedYes[voter];
         hasVoted = resolution.hasVoted[voter];
 
@@ -242,6 +243,8 @@ contract ResolutionManager {
 
     function vote(uint256 resolutionId, bool isYes) public {
         Resolution storage resolution = resolutions[resolutionId];
+        require(_voting.canVoteAt(msg.sender, resolution.snapshotId), "Resolution: account cannot vote");
+        
         ResolutionType storage resolutionType = resolutionTypes[
             resolution.resolutionTypeId
         ];
