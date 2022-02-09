@@ -173,7 +173,7 @@ contract ResolutionManager {
         hasVoted = resolution.hasVoted[voter];
 
         if (
-            _voting.getDelegateAt(voter, resolution.snapshotId) != address(0) &&
+            _voting.getDelegateAt(voter, resolution.snapshotId) != voter &&
             hasVoted
         ) {
             votingPower = _telediskoToken.balanceOfAt(
@@ -272,7 +272,7 @@ contract ResolutionManager {
 
         // If sender has a delegate load voting power from TelediskoToken
         // TODO: change address(0) to msg.address (a voter cannot have delegate 0, only itself or someoneelse)
-        if (delegate != address(0)) {
+        if (delegate != msg.sender) {
             votingPower = _telediskoToken.balanceOfAt(
                 msg.sender,
                 resolution.snapshotId
