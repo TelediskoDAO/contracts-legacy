@@ -2,7 +2,7 @@ import { task } from "hardhat/config";
 import { exportAddress } from "./config";
 
 task("deploy", "Deploy contracts", async (_, hre) => {
-  console.log("Deploy contract mocks/Resolution.sol");
+  console.log("Deploy contract mocks/ResolutionMock.sol");
   const factory = await hre.ethers.getContractFactory("ResolutionMock");
 
   console.log("  Network", hre.network.name);

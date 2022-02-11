@@ -29,6 +29,7 @@ contract ResolutionManager {
     ITelediskoToken private _telediskoToken;
     IVoting private _voting;
 
+    // TODO: make resolution type indices more explicit
     struct ResolutionType {
         string name;
         uint256 quorum;
@@ -47,6 +48,7 @@ contract ResolutionManager {
         uint256 yesVotesTotal;
         bool isNegative;
         bool isPreDraft;
+        bool isCreated;
         mapping(address => bool) hasVoted;
         mapping(address => bool) hasVotedYes;
         mapping(address => uint256) lostVotingPower;
@@ -74,13 +76,13 @@ contract ResolutionManager {
             ResolutionType("preclusion", 75, 14 days, 6 days, false)
         );
         resolutionTypes.push(
-            ResolutionType("dissolution", 66, 14 days, 6 days, false)
-        );
-        resolutionTypes.push(
             ResolutionType("fundamentalOther", 51, 14 days, 6 days, false)
         );
         resolutionTypes.push(
             ResolutionType("significant", 51, 6 days, 4 days, false)
+        );
+        resolutionTypes.push(
+            ResolutionType("dissolution", 66, 14 days, 6 days, false)
         );
         resolutionTypes.push(
             ResolutionType("routine", 51, 3 days, 2 days, true)
@@ -108,6 +110,7 @@ contract ResolutionManager {
     }
 
     function createResolution(
+        uint256 resolutionId,
         string calldata dataURI,
         uint256 resolutionTypeId,
         bool isNegative
@@ -120,14 +123,17 @@ contract ResolutionManager {
             "Resolution: cannot be negative"
         );
 
-        // FIXME: timestamp is unique but only in the block
-        Resolution storage resolution = resolutions[block.timestamp];
+        Resolution storage resolution = resolutions[resolutionId];
+        require(!resolution.isCreated, "Resolution already exists");
+
         resolution.dataURI = dataURI;
         resolution.resolutionTypeId = resolutionTypeId;
         resolution.isNegative = isNegative;
+        // TODO: consider using dataURI to verify resolution existence
         resolution.isPreDraft = true;
-        emit ResolutionCreated(msg.sender, block.timestamp);
-        return block.timestamp;
+        resolution.isCreated = true;
+        emit ResolutionCreated(msg.sender, resolutionId);
+        return resolutionId;
     }
 
     function approveResolution(uint256 resolutionId) public {
@@ -168,8 +174,11 @@ contract ResolutionManager {
         )
     {
         Resolution storage resolution = resolutions[resolutionId];
-        require(_voting.canVoteAt(voter, resolution.snapshotId), "Resolution: account could not vote resolution");
-        
+        require(
+            _voting.canVoteAt(voter, resolution.snapshotId),
+            "Resolution: account could not vote resolution"
+        );
+
         isYes = resolution.hasVotedYes[voter];
         hasVoted = resolution.hasVoted[voter];
 
@@ -243,8 +252,11 @@ contract ResolutionManager {
 
     function vote(uint256 resolutionId, bool isYes) public {
         Resolution storage resolution = resolutions[resolutionId];
-        require(_voting.canVoteAt(msg.sender, resolution.snapshotId), "Resolution: account cannot vote");
-        
+        require(
+            _voting.canVoteAt(msg.sender, resolution.snapshotId),
+            "Resolution: account cannot vote"
+        );
+
         ResolutionType storage resolutionType = resolutionTypes[
             resolution.resolutionTypeId
         ];
