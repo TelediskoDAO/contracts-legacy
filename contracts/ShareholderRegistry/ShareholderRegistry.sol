@@ -11,6 +11,7 @@ contract ShareholderRegistry is ShareholderRegistrySnapshot, AccessControl {
     // next.
     // This is what zodiac calls "incremental decentralization".
     bytes32 public MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public RESOLUTION_ROLE = keccak256("RESOLUTION_ROLE");
 
     constructor(string memory name, string memory symbol)
         ShareholderRegistrySnapshot(name, symbol)
@@ -21,7 +22,7 @@ contract ShareholderRegistry is ShareholderRegistrySnapshot, AccessControl {
     function snapshot()
         public
         override
-        onlyRole(MANAGER_ROLE)
+        onlyRole(RESOLUTION_ROLE)
         returns (uint256)
     {
         return _snapshot();
