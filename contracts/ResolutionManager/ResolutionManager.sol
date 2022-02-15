@@ -6,7 +6,12 @@ import "../ShareholderRegistry/IShareholderRegistry.sol";
 import "../TelediskoToken/ITelediskoToken.sol";
 import "../Voting/IVoting.sol";
 
+// TODO: add indices for resolution types
+// TODO: test new logic
+
 contract ResolutionManager {
+    uint256 private _currentResolutionId = 1;
+
     event ResolutionCreated(address indexed from, uint256 indexed resolutionId);
     event ResolutionUpdated(address indexed from, uint256 indexed resolutionId);
     event ResolutionApproved(
@@ -47,8 +52,6 @@ contract ResolutionManager {
         uint256 snapshotId;
         uint256 yesVotesTotal;
         bool isNegative;
-        bool isPreDraft;
-        bool isCreated;
         mapping(address => bool) hasVoted;
         mapping(address => bool) hasVotedYes;
         mapping(address => uint256) lostVotingPower;
@@ -110,7 +113,6 @@ contract ResolutionManager {
     }
 
     function createResolution(
-        uint256 resolutionId,
         string calldata dataURI,
         uint256 resolutionTypeId,
         bool isNegative
@@ -122,37 +124,37 @@ contract ResolutionManager {
             !isNegative || resolutionType.canBeNegative,
             "Resolution: cannot be negative"
         );
-
+        uint256 resolutionId = _currentResolutionId++;
         Resolution storage resolution = resolutions[resolutionId];
-        require(!resolution.isCreated, "Resolution already exists");
 
         resolution.dataURI = dataURI;
         resolution.resolutionTypeId = resolutionTypeId;
         resolution.isNegative = isNegative;
-        // TODO: consider using dataURI to verify resolution existence
-        resolution.isPreDraft = true;
-        resolution.isCreated = true;
         emit ResolutionCreated(msg.sender, resolutionId);
         return resolutionId;
     }
 
     function approveResolution(uint256 resolutionId) public {
+        require(
+            resolutionId < _currentResolutionId,
+            "Resolution: does not exist"
+        );
+
         Resolution storage resolution = resolutions[resolutionId];
-        require(resolution.isPreDraft, "Resolution: does not exist");
         require(
             resolution.approveTimestamp == 0,
             "Resolution: already approved"
         );
         resolution.approveTimestamp = block.timestamp;
         resolution.snapshotId = snapshotAll();
-        resolution.isPreDraft = false;
         emit ResolutionApproved(msg.sender, resolutionId);
     }
 
     function updateResolution(
         uint256 resolutionId,
         string calldata dataURI,
-        uint256 resolutionTypeId
+        uint256 resolutionTypeId,
+        bool isNegative
     ) public {
         Resolution storage resolution = resolutions[resolutionId];
         require(
@@ -161,6 +163,7 @@ contract ResolutionManager {
         );
         resolution.dataURI = dataURI;
         resolution.resolutionTypeId = resolutionTypeId;
+        resolution.isNegative = isNegative;
         emit ResolutionUpdated(msg.sender, resolutionId);
     }
 
