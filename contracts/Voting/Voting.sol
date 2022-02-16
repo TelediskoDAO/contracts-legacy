@@ -18,11 +18,11 @@ contract Voting is VotingSnapshot, AccessControl {
         super._setToken(token);
     }
 
-    function afterRemoveContributor(address account)
+    function beforeRemoveContributor(address account)
         external
         onlyRole(RESOLUTION_ROLE)
     {
-        super._afterRemoveContributor(account);
+        super._beforeRemoveContributor(account);
     }
 
     function setShareholderRegistry(IShareholderRegistry shareholderRegistry)

@@ -54,7 +54,7 @@ contract VotingBase {
         _contributorRole = _shareholderRegistry.CONTRIBUTOR_STATUS();
     }
 
-    function _afterRemoveContributor(address account) internal {
+    function _beforeRemoveContributor(address account) internal {
         address delegated = getDelegate(account);
         if (delegated != address(0)) {
             if (delegated != account) {
@@ -70,6 +70,7 @@ contract VotingBase {
                 _moveVotingPower(account, address(0), individualVotingPower);
             }
         }
+    }
     }
 
     /// @dev Hook to be called by the companion token upon token transfer
@@ -114,6 +115,16 @@ contract VotingBase {
     /// @notice Sub-delegation is not allowed
     /// @param newDelegate Destination address of module transaction.
     function delegate(address newDelegate) public {
+        _delegate(msg.sender, newDelegate);
+    }
+
+    function _delegate(address delegator, address newDelegate) internal {
+        address currentDelegate = getDelegate(delegator);
+        address newDelegateDelegate = getDelegate(newDelegate);
+        uint256 countDelegatorDelegators = _delegators[delegator];
+
+        // pre conditions
+        // - participants are contributors
         require(
             _shareholderRegistry.isAtLeast(_contributorRole, msg.sender),
             "Voting: only contributors can delegate."
@@ -122,39 +133,30 @@ contract VotingBase {
             _shareholderRegistry.isAtLeast(_contributorRole, newDelegate),
             "Voting: only contributors can be delegated."
         );
-        _delegate(msg.sender, newDelegate);
-    }
-
-    function _delegate(address delegator, address newDelegate) internal {
-        address currentDelegate = getDelegate(delegator);
-        if (currentDelegate == address(0)) {
-            require(
-                newDelegate == delegator,
-                "Voting: first delegate yourself"
-            );
-        }
-
+        // - no sub delegation allowed
         require(
-            currentDelegate != newDelegate,
-            "Voting: the proposed delegate is already your delegate."
+            newDelegate == newDelegateDelegate || delegator == newDelegate,
+            "Voting: new delegate is not self delegated"
+        );
+        require(
+            countDelegatorDelegators == 0 || delegator == newDelegate,
+            "Voting: delegator is already delegated"
         );
 
-        if (delegator != newDelegate) {
-            address currentDelegateeDelegate = getDelegate(newDelegate);
-            // Can we remove this?
-            require(
-                currentDelegateeDelegate != address(0),
-                "Voting: the proposed delegate should delegate itself first."
-            );
-            require(
-                currentDelegateeDelegate == newDelegate,
-                "Voting: the proposed delegatee already has a delegate. No sub-delegations allowed."
-            );
-        }
-
+        // - first delegate should be self
         require(
-            _delegators[delegator] == 0 || delegator == newDelegate,
-            "Voting: the delegator is delegated. No sub-delegations allowed."
+            (currentDelegate == address(0) && delegator == newDelegate) ||
+                currentDelegate != address(0),
+            "Voting: first delegate should be self"
+        );
+
+        // - cannot delegate 0
+        require(newDelegate != address(0), "Voting: cannot delegate address 0");
+
+        // - no double delegation
+        require(
+            newDelegate != currentDelegate,
+            "Voting: new delegate equal to old delegate"
         );
 
         _beforeDelegate(delegator);
