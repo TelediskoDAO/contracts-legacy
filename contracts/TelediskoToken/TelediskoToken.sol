@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./TelediskoTokenSnapshot.sol";
+import { Roles } from "../extensions/Roles.sol";
 
 contract TelediskoToken is TelediskoTokenSnapshot, AccessControl {
     bytes32 public MANAGER_ROLE = keccak256("MANAGER_ROLE");
@@ -16,7 +17,7 @@ contract TelediskoToken is TelediskoTokenSnapshot, AccessControl {
     function setVoting(IVoting voting)
         external
         override
-        onlyRole(MANAGER_ROLE)
+        onlyRole(Roles.MANAGER_ROLE)
     {
         _setVoting(voting);
     }
@@ -24,12 +25,16 @@ contract TelediskoToken is TelediskoTokenSnapshot, AccessControl {
     function setShareholderRegistry(IShareholderRegistry shareholderRegistry)
         external
         override
-        onlyRole(MANAGER_ROLE)
+        onlyRole(Roles.MANAGER_ROLE)
     {
         _setShareholderRegistry(shareholderRegistry);
     }
 
-    function mint(address to, uint256 amount) public override onlyRole(RESOLUTION_ROLE) {
+    function mint(address to, uint256 amount)
+        public
+        override
+        onlyRole(Roles.RESOLUTION_ROLE)
+    {
         _mint(to, amount);
     }
 }
