@@ -14,6 +14,7 @@ import {
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
+import { LargeNumberLike } from "crypto";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -26,9 +27,9 @@ describe("Resolution", () => {
   let voting: Voting;
   let token: TelediskoToken;
   let resolution: ResolutionManager;
+  let contributorStatus: string;
   let shareholderRegistry: ShareholderRegistry;
   let deployer: SignerWithAddress,
-    shareholder: SignerWithAddress,
     user1: SignerWithAddress,
     user2: SignerWithAddress,
     delegate1: SignerWithAddress,
@@ -92,37 +93,95 @@ describe("Resolution", () => {
 
     await shareholderRegistry.grantRole(resolutionRole, resolution.address);
     await voting.grantRole(resolutionRole, resolution.address);
+
+    contributorStatus = await shareholderRegistry.CONTRIBUTOR_STATUS();
   });
 
-  // Mint token to a shareholder
-  // Promote them to contributor
-  // Self-delegate
-  // Give some tokens
-  // Create and approve resolution
-  // Contributor votes resolution (yes)
-  // Resolution passes
   describe("integration", async () => {
-    it("allows simple DAO management (single contributor)", async () => {
-      shareholderRegistry.mint(user1.address, 1);
-      const contributorStatus = await shareholderRegistry.CONTRIBUTOR_STATUS();
-      await shareholderRegistry.setStatus(contributorStatus, user1.address);
-      await voting.connect(user1).delegate(user1.address);
-      await token.mint(user1.address, 42);
+    async function _prepareForVoting(user: SignerWithAddress, tokens: number) {
+      await shareholderRegistry.mint(user.address, 1);
+      await shareholderRegistry.setStatus(contributorStatus, user.address);
+      await voting.connect(user).delegate(user.address);
+      await token.mint(user.address, tokens);
+    }
+
+    async function _prepareResolution() {
       await resolution.createResolution("Qxtest", 0, false);
       await resolution.approveResolution(1);
-      let approvalTimestamp = await getEVMTimestamp();
+      const approvalTimestamp = await getEVMTimestamp();
       const votingTimestamp = approvalTimestamp + DAY * 14;
       await setEVMTimestamp(votingTimestamp);
+    }
 
-      await resolution.connect(user1).vote(1, true);
-
-      const votingEndTimestamp = votingTimestamp + DAY * 7;
+    async function _endResolution() {
+      const votingEndTimestamp = (await getEVMTimestamp()) + DAY * 7;
       await setEVMTimestamp(votingEndTimestamp);
       await mineEVMBlock();
+    }
+
+    async function _vote(user: SignerWithAddress, isYes: boolean) {
+      await resolution.connect(user).vote(1, isYes);
+    }
+    // Mint token to a shareholder
+    // Promote them to contributor
+    // Self-delegate
+    // Give some tokens
+    // Create and approve resolution
+    // Contributor votes resolution (yes)
+    // Resolution passes
+    it("allows simple DAO management (single contributor)", async () => {
+      await _prepareForVoting(user1, 42);
+      await _prepareResolution();
+
+      await _vote(user1, true);
+
+      await _endResolution();
 
       const resolutionResult = await resolution.getResolutionResult(1);
 
       expect(resolutionResult).equal(true);
+    });
+
+    // Mint token to a multiple shareholder
+    // Promote them to contributor
+    // Self-delegate
+    // Give some tokens
+    // Create and approve resolution
+    // Enough contributors vote yes to resolution
+    // Resolution passes
+    it("allows simple DAO management (multiple contributors)", async () => {
+      await _prepareForVoting(user1, 66);
+      await _prepareForVoting(user2, 34);
+      await _prepareResolution();
+
+      await _vote(user1, true);
+
+      await _endResolution();
+
+      const resolutionResult = await resolution.getResolutionResult(1);
+
+      expect(resolutionResult).equal(true);
+    });
+
+    // Mint token to a multiple shareholder
+    // Promote them to contributor
+    // Self-delegate
+    // Give some tokens
+    // Create and approve resolution
+    // Not enough contributors vote yes to resolution
+    // Resolution passes
+    it("allows simple DAO management (single contributor)", async () => {
+      await _prepareForVoting(user1, 34);
+      await _prepareForVoting(user2, 66);
+      await _prepareResolution();
+
+      await _vote(user1, true);
+
+      await _endResolution();
+
+      const resolutionResult = await resolution.getResolutionResult(1);
+
+      expect(resolutionResult).equal(false);
     });
   });
 });
