@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../extensions/Snapshottable.sol";
 import "./VotingBase.sol";
 
-contract VotingSnapshot is VotingBase, Snapshottable {
+abstract contract VotingSnapshot is VotingBase, Snapshottable {
     using Arrays for uint256[];
 
     struct SnapshotsDelegates {
@@ -22,15 +22,6 @@ contract VotingSnapshot is VotingBase, Snapshottable {
     mapping(address => SnapshotsDelegates) _delegationSnapshots;
     mapping(address => SnapshotsValues) _votingPowerSnapshots;
     SnapshotsValues private _totalVotingPowerSnapshots;
-
-    function snapshot()
-        public
-        virtual
-        override(Snapshottable)
-        returns (uint256)
-    {
-        return _snapshot();
-    }
 
     function getDelegateAt(address account, uint256 snapshotId)
         public

@@ -19,11 +19,12 @@ const { expect } = chai;
 const AddressZero = ethers.constants.AddressZero;
 
 describe("VotingSnapshot", () => {
-  let managerRole: string;
-  let votingSnapshot: Voting;
-  let token: ERC20Mock;
-  let shareholderRegistry: ShareholderRegistryMock;
-  let deployer: SignerWithAddress,
+  let managerRole: string,
+    resolutionRole: string,
+    votingSnapshot: Voting,
+    token: ERC20Mock,
+    shareholderRegistry: ShareholderRegistryMock,
+    deployer: SignerWithAddress,
     delegator1: SignerWithAddress,
     delegator2: SignerWithAddress,
     delegated1: SignerWithAddress,
@@ -58,7 +59,9 @@ describe("VotingSnapshot", () => {
 
     votingSnapshot = await VotingSnapshotFactory.deploy();
     managerRole = await votingSnapshot.MANAGER_ROLE();
+    resolutionRole = await votingSnapshot.RESOLUTION_ROLE();
     votingSnapshot.grantRole(managerRole, deployer.address);
+    votingSnapshot.grantRole(resolutionRole, deployer.address);
 
     token = await ERC20MockFactory.deploy(votingSnapshot.address);
     shareholderRegistry = await ShareholderRegistryFactory.deploy();

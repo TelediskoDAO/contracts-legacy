@@ -69,16 +69,12 @@ describe("Resolution", () => {
     await shareholderRegistry.deployed();
 
     var managerRole = await shareholderRegistry.MANAGER_ROLE();
+    var resolutionRole = await token.RESOLUTION_ROLE();
 
     await shareholderRegistry.grantRole(managerRole, deployer.address);
-
-    managerRole = await voting.MANAGER_ROLE();
     await voting.grantRole(managerRole, deployer.address);
-
-    managerRole = await token.MANAGER_ROLE();
     await token.grantRole(managerRole, deployer.address);
 
-    var resolutionRole = await token.RESOLUTION_ROLE();
     await token.grantRole(resolutionRole, deployer.address);
 
     await voting.setShareholderRegistry(shareholderRegistry.address);
@@ -94,8 +90,8 @@ describe("Resolution", () => {
 
     await resolution.deployed();
 
-    resolutionRole = await shareholderRegistry.RESOLUTION_ROLE();
     await shareholderRegistry.grantRole(resolutionRole, resolution.address);
+    await voting.grantRole(resolutionRole, resolution.address);
   });
 
   // Mint token to a shareholder

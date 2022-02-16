@@ -14,6 +14,15 @@ contract Voting is VotingSnapshot, AccessControl {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
+    function snapshot()
+        public
+        override
+        onlyRole(RESOLUTION_ROLE)
+        returns (uint256)
+    {
+        return _snapshot();
+    }
+
     function setToken(IERC20 token) external onlyRole(MANAGER_ROLE) {
         super._setToken(token);
     }
