@@ -71,7 +71,6 @@ contract VotingBase {
             }
         }
     }
-    }
 
     /// @dev Hook to be called by the companion token upon token transfer
     /// @notice Only the companion token can call this method
