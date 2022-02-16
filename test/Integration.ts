@@ -98,19 +98,35 @@ describe("Resolution", () => {
   });
 
   describe("integration", async () => {
+    var currentResolution: number;
+    beforeEach(async () => {
+      currentResolution = 0;
+    });
+
+    async function _mintTokens(user: SignerWithAddress, tokens: number) {
+      await token.mint(user.address, tokens);
+    }
+
     async function _prepareForVoting(user: SignerWithAddress, tokens: number) {
       await shareholderRegistry.mint(user.address, 1);
       await shareholderRegistry.setStatus(contributorStatus, user.address);
       await voting.connect(user).delegate(user.address);
-      await token.mint(user.address, tokens);
+      await _mintTokens(user, tokens);
+    }
+
+    async function _makeVotable(resolutionId: number) {
+      const resolutionObject = await resolution.resolutions(resolutionId);
+      const votingTimestamp =
+        resolutionObject.approveTimestamp.toNumber() + DAY * 14;
+      await setEVMTimestamp(votingTimestamp);
     }
 
     async function _prepareResolution() {
+      currentResolution++;
       await resolution.createResolution("Qxtest", 0, false);
-      await resolution.approveResolution(1);
-      const approvalTimestamp = await getEVMTimestamp();
-      const votingTimestamp = approvalTimestamp + DAY * 14;
-      await setEVMTimestamp(votingTimestamp);
+      await resolution.approveResolution(currentResolution);
+
+      return currentResolution;
     }
 
     async function _endResolution() {
@@ -119,8 +135,12 @@ describe("Resolution", () => {
       await mineEVMBlock();
     }
 
-    async function _vote(user: SignerWithAddress, isYes: boolean) {
-      await resolution.connect(user).vote(1, isYes);
+    async function _vote(
+      user: SignerWithAddress,
+      isYes: boolean,
+      resolutionId: number
+    ) {
+      await resolution.connect(user).vote(resolutionId, isYes);
     }
     // Mint token to a shareholder
     // Promote them to contributor
@@ -131,13 +151,16 @@ describe("Resolution", () => {
     // Resolution passes
     it("allows simple DAO management (single contributor)", async () => {
       await _prepareForVoting(user1, 42);
-      await _prepareResolution();
+      const resolutionId = await _prepareResolution();
+      await _makeVotable(resolutionId);
 
-      await _vote(user1, true);
+      await _vote(user1, true, resolutionId);
 
       await _endResolution();
 
-      const resolutionResult = await resolution.getResolutionResult(1);
+      const resolutionResult = await resolution.getResolutionResult(
+        resolutionId
+      );
 
       expect(resolutionResult).equal(true);
     });
@@ -149,16 +172,19 @@ describe("Resolution", () => {
     // Create and approve resolution
     // Enough contributors vote yes to resolution
     // Resolution passes
-    it("allows simple DAO management (multiple contributors)", async () => {
+    it("successful resolution (multiple contributors)", async () => {
       await _prepareForVoting(user1, 66);
       await _prepareForVoting(user2, 34);
-      await _prepareResolution();
+      const resolutionId = await _prepareResolution();
+      await _makeVotable(resolutionId);
 
-      await _vote(user1, true);
+      await _vote(user1, true, resolutionId);
 
       await _endResolution();
 
-      const resolutionResult = await resolution.getResolutionResult(1);
+      const resolutionResult = await resolution.getResolutionResult(
+        resolutionId
+      );
 
       expect(resolutionResult).equal(true);
     });
@@ -170,18 +196,50 @@ describe("Resolution", () => {
     // Create and approve resolution
     // Not enough contributors vote yes to resolution
     // Resolution passes
-    it("allows simple DAO management (single contributor)", async () => {
+    it("unsuccessful resolution (multiple contributors)", async () => {
       await _prepareForVoting(user1, 34);
       await _prepareForVoting(user2, 66);
-      await _prepareResolution();
+      const resolutionId = await _prepareResolution();
+      await _makeVotable(resolutionId);
 
-      await _vote(user1, true);
+      await _vote(user1, true, resolutionId);
 
       await _endResolution();
 
-      const resolutionResult = await resolution.getResolutionResult(1);
+      const resolutionResult = await resolution.getResolutionResult(
+        resolutionId
+      );
 
       expect(resolutionResult).equal(false);
+    });
+
+    // Mint token to a multiple shareholder
+    // Promote them to contributor
+    // Self-delegate
+    // Give some tokens
+    // Create and approve resolution
+    // Enough contributors vote yes to resolution
+    // Mint more token to some of the contributors
+    // Create and approve new resolution
+    // Contributor with not sufficient voting power vote yes to resolution
+    // Resolution fails
+    it("multiple resolutions, different voting power over time, multiple contributor", async () => {
+      await _prepareForVoting(user1, 66);
+      await _prepareForVoting(user2, 34);
+      const resolutionId1 = await _prepareResolution();
+
+      await _mintTokens(user2, 96); // make them the most powerful user
+      const resolutionId2 = await _prepareResolution();
+
+      await _makeVotable(resolutionId2); // this will automatically put resolutionId1 also up for voting
+      await _vote(user1, true, resolutionId1);
+      await _vote(user1, true, resolutionId2); // this will have a lower voting power
+
+      const resolution1Result = await resolution.getResolutionResult(1);
+      const resolution2Result = await resolution.getResolutionResult(2);
+
+      expect(resolution1Result).equal(true);
+      expect(resolution2Result).equal(false);
     });
   });
 });
