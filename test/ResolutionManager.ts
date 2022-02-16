@@ -719,7 +719,7 @@ describe("Resolution", () => {
     });
   });
 
-  describe.only("resolution outcome", async () => {
+  describe("resolution outcome", async () => {
     async function setupUser(user: SignerWithAddress, votingPower: number) {
       await voting.mock_getDelegateAt(user.address, user.address);
       await voting.mock_getVotingPowerAt(user.address, votingPower);

@@ -3,8 +3,8 @@ import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { solidity } from "ethereum-waffle";
 import {
-  VotingSnapshot,
-  VotingSnapshot__factory,
+  Voting,
+  Voting__factory,
   ERC20Mock,
   ERC20Mock__factory,
   ShareholderRegistryMock,
@@ -20,7 +20,7 @@ const AddressZero = ethers.constants.AddressZero;
 
 describe("VotingSnapshot", () => {
   let managerRole: string;
-  let votingSnapshot: VotingSnapshot;
+  let votingSnapshot: Voting;
   let token: ERC20Mock;
   let shareholderRegistry: ShareholderRegistryMock;
   let deployer: SignerWithAddress,
@@ -42,9 +42,9 @@ describe("VotingSnapshot", () => {
       nonContributor,
     ] = await ethers.getSigners();
     const VotingSnapshotFactory = (await ethers.getContractFactory(
-      "VotingSnapshot",
+      "Voting",
       deployer
-    )) as VotingSnapshot__factory;
+    )) as Voting__factory;
 
     const ERC20MockFactory = (await ethers.getContractFactory(
       "ERC20Mock",
