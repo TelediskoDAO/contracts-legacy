@@ -70,17 +70,22 @@ describe("Resolution", () => {
 
     var managerRole = await roles.MANAGER_ROLE();
     var resolutionRole = await roles.RESOLUTION_ROLE();
+    var shareholderRegistryRole = await roles.SHAREHOLDER_REGISTRY_ROLE();
 
     await shareholderRegistry.grantRole(managerRole, deployer.address);
+    await voting.grantRole(
+      shareholderRegistryRole,
+      shareholderRegistry.address
+    );
     await voting.grantRole(managerRole, deployer.address);
     await token.grantRole(managerRole, deployer.address);
-
     await token.grantRole(resolutionRole, deployer.address);
 
     await voting.setShareholderRegistry(shareholderRegistry.address);
     await voting.setToken(token.address);
     await token.setShareholderRegistry(shareholderRegistry.address);
     await token.setVoting(voting.address);
+    await shareholderRegistry.setVoting(voting.address);
 
     resolution = await ResolutionFactory.deploy(
       shareholderRegistry.address,
@@ -309,7 +314,7 @@ describe("Resolution", () => {
       expect(resolution2User2.hasVoted).false;
     });
 
-    it.only("expect chaos", async () => {
+    it("expect chaos", async () => {
       await _prepareForVoting(user1, 60);
       await _prepareForVoting(user2, 30);
       await _prepareForVoting(user3, 10);
@@ -340,6 +345,7 @@ describe("Resolution", () => {
       const resolutionId3 = await _prepareResolution();
 
       await shareholderRegistry.setStatus(contributorStatus, user3.address);
+      await voting.connect(user3).delegate(user3.address);
       // -> user 1 voting power == 60
       // -> user 2 voting power == 0 (130)
       // -> user 3 voting power == 190
@@ -358,7 +364,7 @@ describe("Resolution", () => {
       await expect(_vote(user3, true, resolutionId3)).revertedWith(
         "Resolution: account cannot vote"
       );
-      await _vote(user2, false, resolutionId3);
+      await _vote(user2, true, resolutionId3);
       // passes
 
       await _vote(user3, true, resolutionId4);
@@ -377,7 +383,7 @@ describe("Resolution", () => {
         resolutionId4
       );
 
-      expect(resolution1Result).equal(false);
+      expect(resolution1Result).equal(true);
       expect(resolution2Result).equal(false);
       expect(resolution3Result).equal(true);
       expect(resolution4Result).equal(true);

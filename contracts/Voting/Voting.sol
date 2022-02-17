@@ -29,7 +29,7 @@ contract Voting is VotingSnapshot, AccessControl {
 
     function beforeRemoveContributor(address account)
         external
-        onlyRole(Roles.RESOLUTION_ROLE)
+        onlyRole(Roles.SHAREHOLDER_REGISTRY_ROLE)
     {
         super._beforeRemoveContributor(account);
     }
