@@ -7,7 +7,8 @@ import {
   ShareholderRegistry__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { parseEther } from "ethers/lib/utils";
+import { parseEther, RLP } from "ethers/lib/utils";
+import { roles } from "./utils/roles";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -42,8 +43,8 @@ describe("Shareholder Registry", () => {
     registry = await ShareholderRegistryFactory.deploy("TS", "Teledisko Share");
     await registry.deployed();
 
-    MANAGER_ROLE = await registry.MANAGER_ROLE();
-    RESOLUTION_ROLE = await registry.RESOLUTION_ROLE();
+    MANAGER_ROLE = await roles.MANAGER_ROLE();
+    RESOLUTION_ROLE = await roles.RESOLUTION_ROLE();
 
     SHAREHOLDER_STATUS = await registry.SHAREHOLDER_STATUS();
     INVESTOR_STATUS = await registry.INVESTOR_STATUS();

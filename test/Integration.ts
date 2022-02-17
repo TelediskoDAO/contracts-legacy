@@ -14,7 +14,7 @@ import {
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
-import { LargeNumberLike } from "crypto";
+import { roles } from "./utils/roles";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -69,8 +69,8 @@ describe("Resolution", () => {
     await token.deployed();
     await shareholderRegistry.deployed();
 
-    var managerRole = await shareholderRegistry.MANAGER_ROLE();
-    var resolutionRole = await token.RESOLUTION_ROLE();
+    var managerRole = await roles.MANAGER_ROLE();
+    var resolutionRole = await roles.RESOLUTION_ROLE();
 
     await shareholderRegistry.grantRole(managerRole, deployer.address);
     await voting.grantRole(managerRole, deployer.address);

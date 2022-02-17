@@ -11,6 +11,7 @@ import {
   ShareholderRegistryMock__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { roles } from "./utils/roles";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -58,8 +59,8 @@ describe("VotingSnapshot", () => {
     )) as ShareholderRegistryMock__factory;
 
     votingSnapshot = await VotingSnapshotFactory.deploy();
-    managerRole = await votingSnapshot.MANAGER_ROLE();
-    resolutionRole = await votingSnapshot.RESOLUTION_ROLE();
+    resolutionRole = await roles.RESOLUTION_ROLE();
+    managerRole = await roles.MANAGER_ROLE();
     votingSnapshot.grantRole(managerRole, deployer.address);
     votingSnapshot.grantRole(resolutionRole, deployer.address);
 
@@ -157,7 +158,7 @@ describe("VotingSnapshot", () => {
       });
 
       it("should return no delegate from a new snapshot if contributor removed", async () => {
-        const resolutionRole = await votingSnapshot.RESOLUTION_ROLE();
+        const resolutionRole = await roles.RESOLUTION_ROLE();
         await votingSnapshot.grantRole(resolutionRole, deployer.address);
         await votingSnapshot.snapshot();
         let snapshotIdBefore = await votingSnapshot.getCurrentSnapshotId();
@@ -281,7 +282,7 @@ describe("VotingSnapshot", () => {
       });
 
       it("should return false when contributor is not anymore a contributor at a given snapshot", async () => {
-        const resolutionRole = await votingSnapshot.RESOLUTION_ROLE();
+        const resolutionRole = await roles.RESOLUTION_ROLE();
         await votingSnapshot.grantRole(resolutionRole, deployer.address);
         await votingSnapshot.snapshot();
         let snapshotIdBefore = await votingSnapshot.getCurrentSnapshotId();
