@@ -73,7 +73,7 @@ contract ShareholderRegistryBase is ERC20 {
         internal
         virtual
     {
-        if (status == 0) {
+        if (status != CONTRIBUTOR_STATUS || status != FOUNDER_STATUS) {
             _voting.beforeRemoveContributor(account);
         }
     }
