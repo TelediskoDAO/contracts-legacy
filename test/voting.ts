@@ -9,8 +9,6 @@ import {
   ERC20Mock__factory,
   ShareholderRegistryMock,
   ShareholderRegistryMock__factory,
-  Roles,
-  Roles__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { roles } from "./utils/roles";
