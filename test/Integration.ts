@@ -235,8 +235,12 @@ describe("Resolution", () => {
       await _vote(user1, true, resolutionId1);
       await _vote(user1, true, resolutionId2); // this will have a lower voting power
 
-      const resolution1Result = await resolution.getResolutionResult(1);
-      const resolution2Result = await resolution.getResolutionResult(2);
+      const resolution1Result = await resolution.getResolutionResult(
+        resolutionId1
+      );
+      const resolution2Result = await resolution.getResolutionResult(
+        resolutionId2
+      );
 
       expect(resolution1Result).equal(true);
       expect(resolution2Result).equal(false);
