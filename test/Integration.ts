@@ -32,12 +32,10 @@ describe("Resolution", () => {
   let deployer: SignerWithAddress,
     user1: SignerWithAddress,
     user2: SignerWithAddress,
-    delegate1: SignerWithAddress,
-    nonContributor: SignerWithAddress;
+    user3: SignerWithAddress;
 
   beforeEach(async () => {
-    [deployer, user1, user2, delegate1, nonContributor] =
-      await ethers.getSigners();
+    [deployer, user1, user2, user3] = await ethers.getSigners();
     const VotingFactory = (await ethers.getContractFactory(
       "Voting",
       deployer
@@ -142,6 +140,13 @@ describe("Resolution", () => {
     ) {
       await resolution.connect(user).vote(resolutionId, isYes);
     }
+
+    async function _delegate(
+      user1: SignerWithAddress,
+      user2: SignerWithAddress
+    ) {
+      await voting.connect(user1).delegate(user2.address);
+    }
     // Mint token to a shareholder
     // Promote them to contributor
     // Self-delegate
@@ -244,6 +249,96 @@ describe("Resolution", () => {
 
       expect(resolution1Result).equal(true);
       expect(resolution2Result).equal(false);
+    });
+
+    it("multiple resolutions, different voting power over time, delegation, multiple contributors", async () => {
+      await _prepareForVoting(user1, 66);
+      await _prepareForVoting(user2, 34);
+      await _delegate(user2, user1);
+      const resolutionId1 = await _prepareResolution();
+
+      await _mintTokens(user2, 96); // user2 has more voting power, but it's transferred to user1 (the delegate)
+      const resolutionId2 = await _prepareResolution();
+
+      await _makeVotable(resolutionId2); // this will automatically put resolutionId1 also up for voting
+      await _vote(user1, true, resolutionId1);
+      await _vote(user1, true, resolutionId2);
+
+      const resolution1Result = await resolution.getResolutionResult(
+        resolutionId1
+      );
+      const resolution2Result = await resolution.getResolutionResult(
+        resolutionId2
+      );
+
+      expect(resolution1Result).equal(true);
+      expect(resolution2Result).equal(true);
+
+      const resolution1User1 = await resolution.getVoterVote(
+        resolutionId1,
+        user1.address
+      );
+      expect(resolution1User1.isYes).true;
+      expect(resolution1User1.votingPower).equal(100);
+      expect(resolution1User1.hasVoted).true;
+
+      const resolution1User2 = await resolution.getVoterVote(
+        resolutionId1,
+        user2.address
+      );
+      expect(resolution1User2.isYes).false;
+      expect(resolution1User2.votingPower).equal(0);
+      expect(resolution1User2.hasVoted).false;
+
+      const resolution2User1 = await resolution.getVoterVote(
+        resolutionId2,
+        user1.address
+      );
+      expect(resolution2User1.isYes).true;
+      expect(resolution2User1.votingPower).equal(196);
+      expect(resolution2User1.hasVoted).true;
+
+      const resolution2User2 = await resolution.getVoterVote(
+        resolutionId2,
+        user2.address
+      );
+      expect(resolution2User2.isYes).false;
+      expect(resolution2User2.votingPower).equal(0);
+      expect(resolution2User2.hasVoted).false;
+    });
+
+    it.only("expect chaos", async () => {
+      await _prepareForVoting(user1, 60);
+      await _prepareForVoting(user2, 30);
+      await _prepareForVoting(user3, 10);
+
+      await _delegate(user1, user3);
+      await _delegate(user2, user3);
+
+      const resolutionId1 = await _prepareResolution();
+
+      await _delegate(user1, user1);
+      await _mintTokens(user2, 100);
+
+      const resolutionId2 = await _prepareResolution();
+
+      await _makeVotable(resolutionId2); // this will automatically put resolutionId1 also up for voting
+
+      await _vote(user3, false, resolutionId1);
+      await _vote(user1, true, resolutionId1);
+
+      await _vote(user3, true, resolutionId2);
+      await _vote(user1, false, resolutionId2);
+
+      const resolution1Result = await resolution.getResolutionResult(
+        resolutionId1
+      );
+      const resolution2Result = await resolution.getResolutionResult(
+        resolutionId2
+      );
+
+      expect(resolution1Result).equal(false);
+      expect(resolution2Result).equal(true);
     });
   });
 });
