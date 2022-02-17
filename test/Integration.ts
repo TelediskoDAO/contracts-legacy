@@ -28,6 +28,7 @@ describe("Resolution", () => {
   let token: TelediskoToken;
   let resolution: ResolutionManager;
   let contributorStatus: string;
+  let investorStatus: string;
   let shareholderRegistry: ShareholderRegistry;
   let deployer: SignerWithAddress,
     user1: SignerWithAddress,
@@ -93,6 +94,7 @@ describe("Resolution", () => {
     await voting.grantRole(resolutionRole, resolution.address);
 
     contributorStatus = await shareholderRegistry.CONTRIBUTOR_STATUS();
+    investorStatus = await shareholderRegistry.INVESTOR_STATUS();
   });
 
   describe("integration", async () => {
@@ -314,21 +316,53 @@ describe("Resolution", () => {
 
       await _delegate(user1, user3);
       await _delegate(user2, user3);
+      // -> user 1 voting power == 0 (60)
+      // -> user 2 voting power == 0 (30)
+      // -> user 3 voting power == 100
 
       const resolutionId1 = await _prepareResolution();
 
       await _delegate(user1, user1);
-      await _mintTokens(user2, 100);
+      await _mintTokens(user3, 50);
+      // -> user 1 voting power == 60
+      // -> user 2 voting power == 0 (30)
+      // -> user 3 voting power == 90
 
       const resolutionId2 = await _prepareResolution();
 
-      await _makeVotable(resolutionId2); // this will automatically put resolutionId1 also up for voting
+      await shareholderRegistry.setStatus(investorStatus, user3.address);
+      await token.connect(user3).transfer(user2.address, 50);
+      await token.mint(user2.address, 50);
+      // -> user 1 voting power == 60
+      // -> user 2 voting power == 130
+      // -> user 3 voting power == 0
 
-      await _vote(user3, false, resolutionId1);
-      await _vote(user1, true, resolutionId1);
+      const resolutionId3 = await _prepareResolution();
+
+      await shareholderRegistry.setStatus(contributorStatus, user3.address);
+      // -> user 1 voting power == 60
+      // -> user 2 voting power == 0 (130)
+      // -> user 3 voting power == 190
+
+      const resolutionId4 = await _prepareResolution();
+
+      await _makeVotable(resolutionId4); // this will automatically put all resolutions also up for voting
+
+      await _vote(user3, true, resolutionId1);
+      await _vote(user2, false, resolutionId1);
+      // won't pass
 
       await _vote(user3, true, resolutionId2);
-      await _vote(user1, false, resolutionId2);
+      // won't pass
+
+      await expect(_vote(user3, true, resolutionId3)).revertedWith(
+        "Resolution: account cannot vote"
+      );
+      await _vote(user2, false, resolutionId3);
+      // passes
+
+      await _vote(user3, true, resolutionId4);
+      // passes
 
       const resolution1Result = await resolution.getResolutionResult(
         resolutionId1
@@ -336,9 +370,17 @@ describe("Resolution", () => {
       const resolution2Result = await resolution.getResolutionResult(
         resolutionId2
       );
+      const resolution3Result = await resolution.getResolutionResult(
+        resolutionId3
+      );
+      const resolution4Result = await resolution.getResolutionResult(
+        resolutionId4
+      );
 
       expect(resolution1Result).equal(false);
-      expect(resolution2Result).equal(true);
+      expect(resolution2Result).equal(false);
+      expect(resolution3Result).equal(true);
+      expect(resolution4Result).equal(true);
     });
   });
 });
