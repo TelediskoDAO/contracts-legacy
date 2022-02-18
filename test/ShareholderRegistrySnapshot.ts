@@ -61,6 +61,7 @@ describe("Shareholder Registry", () => {
     FOUNDER_STATUS = await registry.FOUNDER_STATUS();
 
     await registry.grantRole(RESOLUTION_ROLE, manager.address);
+    await registry.grantRole(MANAGER_ROLE, manager.address);
     await registry.setVoting(voting.address);
     await registry.mint(founder.address, shareCapital);
     await registry.connect(founder).approve(manager.address, shareCapital);
