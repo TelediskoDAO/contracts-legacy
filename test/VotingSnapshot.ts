@@ -77,7 +77,7 @@ describe("VotingSnapshot", () => {
     await votingSnapshot.setToken(token.address);
     await votingSnapshot.setShareholderRegistry(shareholderRegistry.address);
 
-    await shareholderRegistry.setNonContributor(nonContributor.address);
+    //await shareholderRegistry.setNonContributor(nonContributor.address);
 
     [delegator1, delegator2, delegated1, delegated2].forEach((voter) => {
       votingSnapshot.connect(voter).delegate(voter.address);
