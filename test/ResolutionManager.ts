@@ -135,7 +135,7 @@ describe("Resolution", () => {
     });
   });
 
-  describe("approval logic", async () => {
+  describe.only("approval logic", async () => {
     it("should not allow to approve a non existing resolution", async () => {
       await expect(
         resolution.connect(user1).approveResolution(resolutionId)
@@ -152,6 +152,14 @@ describe("Resolution", () => {
 
       let blockTimestamp = (await ethers.provider.getBlock("latest")).timestamp;
       expect(approveTimestamp.toNumber()).equal(blockTimestamp);
+    });
+
+    it("should not allow non-founders to approve an existing resolution", async () => {
+      await resolution.connect(user1).createResolution("test", 0, false);
+
+      await expect(
+        resolution.connect(user1).approveResolution(resolutionId)
+      ).revertedWith("Resolution: only founder can approve");
     });
   });
 
