@@ -18,8 +18,6 @@ chai.use(chaiAsPromised);
 const { expect } = chai;
 
 const AddressZero = ethers.constants.AddressZero;
-const Bytes32Zero =
-  "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 describe("Voting", () => {
   let contributorStatus: string;
