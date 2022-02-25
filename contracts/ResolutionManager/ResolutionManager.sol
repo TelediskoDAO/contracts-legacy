@@ -153,6 +153,13 @@ contract ResolutionManager {
 
     function approveResolution(uint256 resolutionId) public {
         require(
+            _shareholderRegistry.isAtLeast(
+                _shareholderRegistry.FOUNDER_STATUS(),
+                msg.sender
+            ),
+            "Resolution: only founder can approve"
+        );
+        require(
             resolutionId < _currentResolutionId,
             "Resolution: does not exist"
         );
@@ -177,6 +184,13 @@ contract ResolutionManager {
         require(
             resolution.approveTimestamp == 0,
             "Resolution: already approved"
+        );
+        require(
+            _shareholderRegistry.isAtLeast(
+                _shareholderRegistry.FOUNDER_STATUS(),
+                msg.sender
+            ),
+            "Resolution: only founder can update"
         );
         resolution.dataURI = dataURI;
         resolution.resolutionTypeId = resolutionTypeId;
