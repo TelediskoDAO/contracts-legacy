@@ -167,6 +167,14 @@ describe("Voting", () => {
         .connect(noDelegate)
         .beforeRemoveContributor(delegator1.address);
     });
+
+    it("should not fail if an address calling 'beforeRemoveContributor' on an address with delegate is not a contributor", async () => {
+      await voting.grantRole(shareholderRegistryRole, nonContributor.address);
+      await voting.connect(delegator1).delegate(delegated1.address);
+      await voting
+        .connect(nonContributor)
+        .beforeRemoveContributor(delegator1.address);
+    });
   });
 
   describe("total voting power logic", async () => {
