@@ -180,7 +180,7 @@ describe("Resolution", () => {
     });
   });
 
-  describe.only("update logic", async () => {
+  describe("update logic", async () => {
     let resolutionId: number;
     beforeEach(async () => {
       function getResolutionId(receipt: ContractReceipt) {
