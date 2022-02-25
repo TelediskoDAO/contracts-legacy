@@ -71,6 +71,10 @@ task("deploy", "Deploy DAO", async (_, hre) => {
     ROLES.RESOLUTION_ROLE,
     resolutionManagerContract.address
   );
+  await votingContract.grantRole(
+    ROLES.SHAREHOLDER_REGISTRY_ROLE,
+    shareholderRegistryContract.address
+  );
   await votingContract.grantRole(ROLES.MANAGER_ROLE, deployer.address);
 
   console.log("    🏅 Grant roles for ShareholderRegistry");
@@ -85,6 +89,10 @@ task("deploy", "Deploy DAO", async (_, hre) => {
 
   console.log("    🏅 Grant roles for TelediskoToken");
   await telediskoTokenContract.grantRole(ROLES.MANAGER_ROLE, deployer.address);
+  await telediskoTokenContract.grantRole(
+    ROLES.RESOLUTION_ROLE,
+    deployer.address
+  ); // Fix this, we need to explicitely grant the MANAGER acces to mint
   const txGranting = await telediskoTokenContract.grantRole(
     ROLES.RESOLUTION_ROLE,
     resolutionManagerContract.address
