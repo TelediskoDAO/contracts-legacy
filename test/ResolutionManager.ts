@@ -843,7 +843,7 @@ describe("Resolution", () => {
     ) {
       await voting.mock_getTotalVotingPowerAt(totalVotingPower);
 
-      await resolution.createResolution("test", 6, negative);
+      await resolution.connect(user1).createResolution("test", 6, negative);
       await resolution.connect(founder).approveResolution(1);
       const approveTimestamp = await getEVMTimestamp();
       await setEVMTimestamp(approveTimestamp + 3 * DAY);
