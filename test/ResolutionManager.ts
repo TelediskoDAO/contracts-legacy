@@ -157,6 +157,11 @@ describe("Resolution", () => {
         .to.emit(resolution, "ResolutionCreated")
         .withArgs(user1.address, resolutionId);
     });
+    it("doesn't allow non contributors to create a resolution", async () => {
+      await expect(
+        resolution.connect(nonContributor).createResolution("test", 0, false)
+      ).revertedWith("Resolution: only contributor can create");
+    });
     it("allows to create a resolution and read the resolutionId with an event", async () => {
       const tx = await resolution
         .connect(user1)
@@ -180,7 +185,7 @@ describe("Resolution", () => {
     });
   });
 
-  describe.only("update logic", async () => {
+  describe("update logic", async () => {
     let resolutionId: number;
     beforeEach(async () => {
       function getResolutionId(receipt: ContractReceipt) {
