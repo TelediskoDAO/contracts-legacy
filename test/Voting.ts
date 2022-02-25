@@ -25,9 +25,11 @@ describe("Voting", () => {
   let contributorStatus: string;
   let shareholderStatus: string;
   let investorStatus: string;
+
   let managerRole: string;
   let resolutionRole: string;
   let shareholderRegistryRole: string;
+
   let voting: Voting;
   let token: ERC20Mock;
   let shareholderRegistry: ShareholderRegistryMock;
