@@ -12,6 +12,7 @@ import "../Voting/IVoting.sol";
 contract ResolutionManager {
     uint256 private _currentResolutionId = 1;
 
+    event ContractDeployed(address from);
     event ResolutionCreated(address indexed from, uint256 indexed resolutionId);
     event ResolutionUpdated(address indexed from, uint256 indexed resolutionId);
     event ResolutionApproved(
@@ -90,6 +91,8 @@ contract ResolutionManager {
         resolutionTypes.push(
             ResolutionType("routine", 51, 3 days, 2 days, true)
         );
+
+        emit ContractDeployed(msg.sender);
     }
 
     function setShareholderRegistry(IShareholderRegistry shareholderRegistry)
