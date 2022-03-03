@@ -75,6 +75,8 @@ contract ResolutionManager is AccessControl {
         _telediskoToken = telediskoToken;
         _voting = voting;
 
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+
         // TODO: check if there are any rounding errors
         _addResolutionType("amendment", 66, 14 days, 6 days, false);
         _addResolutionType("capitalChange", 66, 14 days, 6 days, false);
