@@ -2,17 +2,15 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../ShareholderRegistry/IShareholderRegistry.sol";
 import "../TelediskoToken/ITelediskoToken.sol";
 import "../Voting/IVoting.sol";
+import "../extensions/Roles.sol";
 
-// TODO: add indices for resolution types
-// TODO: test new logic
-
-contract ResolutionManager {
+contract ResolutionManager is AccessControl {
     uint256 private _currentResolutionId = 1;
 
-    event ContractDeployed(address from);
     event ResolutionCreated(address indexed from, uint256 indexed resolutionId);
     event ResolutionUpdated(address indexed from, uint256 indexed resolutionId);
     event ResolutionApproved(
@@ -24,6 +22,14 @@ contract ResolutionManager {
         uint256 indexed resolutionId,
         uint256 votingPower,
         bool isYes
+    );
+    event ResolutionTypeCreated(
+        uint256 indexed typeIndex,
+        string name,
+        uint256 quorum,
+        uint256 noticePeriod,
+        uint256 votingPeriod,
+        bool canBeNegative
     );
     event DelegateLostVotingPower(
         address indexed from,
@@ -70,29 +76,29 @@ contract ResolutionManager {
         _voting = voting;
 
         // TODO: check if there are any rounding errors
-        resolutionTypes.push(
-            ResolutionType("amendment", 66, 14 days, 6 days, false)
-        );
-        resolutionTypes.push(
-            ResolutionType("capitalChange", 66, 14 days, 6 days, false)
-        );
-        resolutionTypes.push(
-            ResolutionType("preclusion", 75, 14 days, 6 days, false)
-        );
-        resolutionTypes.push(
-            ResolutionType("fundamentalOther", 51, 14 days, 6 days, false)
-        );
-        resolutionTypes.push(
-            ResolutionType("significant", 51, 6 days, 4 days, false)
-        );
-        resolutionTypes.push(
-            ResolutionType("dissolution", 66, 14 days, 6 days, false)
-        );
-        resolutionTypes.push(
-            ResolutionType("routine", 51, 3 days, 2 days, true)
-        );
+        _addResolutionType("amendment", 66, 14 days, 6 days, false);
+        _addResolutionType("capitalChange", 66, 14 days, 6 days, false);
+        _addResolutionType("preclusion", 75, 14 days, 6 days, false);
+        _addResolutionType("fundamentalOther", 51, 14 days, 6 days, false);
+        _addResolutionType("significant", 51, 6 days, 4 days, false);
+        _addResolutionType("dissolution", 66, 14 days, 6 days, false);
+        _addResolutionType("routine", 51, 3 days, 2 days, true);
+    }
 
-        emit ContractDeployed(msg.sender);
+    function addResolutionType(
+        string memory name,
+        uint256 quorum,
+        uint256 noticePeriod,
+        uint256 votingPeriod,
+        bool canBeNegative
+    ) public onlyRole(Roles.MANAGER_ROLE) {
+        _addResolutionType(
+            name,
+            quorum,
+            noticePeriod,
+            votingPeriod,
+            canBeNegative
+        );
     }
 
     function setShareholderRegistry(IShareholderRegistry shareholderRegistry)
@@ -126,7 +132,7 @@ contract ResolutionManager {
         return fixedResolutionTypes;
     }
 
-    function snapshotAll() public returns (uint256) {
+    function snapshotAll() internal returns (uint256) {
         _shareholderRegistry.snapshot();
         _telediskoToken.snapshot();
         return _voting.snapshot();
@@ -331,5 +337,32 @@ contract ResolutionManager {
 
         resolution.hasVoted[msg.sender] = true;
         resolution.hasVotedYes[msg.sender] = isYes;
+    }
+
+    function _addResolutionType(
+        string memory name,
+        uint256 quorum,
+        uint256 noticePeriod,
+        uint256 votingPeriod,
+        bool canBeNegative
+    ) internal {
+        resolutionTypes.push(
+            ResolutionType(
+                name,
+                quorum,
+                noticePeriod,
+                votingPeriod,
+                canBeNegative
+            )
+        );
+
+        emit ResolutionTypeCreated(
+            resolutionTypes.length - 1,
+            name,
+            quorum,
+            noticePeriod,
+            votingPeriod,
+            canBeNegative
+        );
     }
 }
