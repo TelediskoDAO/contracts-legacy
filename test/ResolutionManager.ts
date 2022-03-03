@@ -265,7 +265,7 @@ describe("Resolution", () => {
           .addResolutionType("test", 42, 43, 44, false)
       )
         .to.emit(resolution, "ResolutionTypeCreated")
-        .withArgs(7, "test", 42, 43, 44, false);
+        .withArgs(deployer.address, 7);
     });
 
     it("should allow a non manager to add a resolution type", async () => {

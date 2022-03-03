@@ -24,12 +24,8 @@ contract ResolutionManager is AccessControl {
         bool isYes
     );
     event ResolutionTypeCreated(
-        uint256 indexed typeIndex,
-        string name,
-        uint256 quorum,
-        uint256 noticePeriod,
-        uint256 votingPeriod,
-        bool canBeNegative
+        address indexed from,
+        uint256 indexed typeIndex
     );
     event DelegateLostVotingPower(
         address indexed from,
@@ -358,13 +354,6 @@ contract ResolutionManager is AccessControl {
             )
         );
 
-        emit ResolutionTypeCreated(
-            resolutionTypes.length - 1,
-            name,
-            quorum,
-            noticePeriod,
-            votingPeriod,
-            canBeNegative
-        );
+        emit ResolutionTypeCreated(_msgSender(), resolutionTypes.length - 1);
     }
 }
