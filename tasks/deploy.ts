@@ -117,23 +117,8 @@ task("deploy", "Deploy DAO", async (_, hre) => {
   console.log("    ShareholderRegistry 🤝 Voting");
   await shareholderRegistryContract.setVoting(votingContract.address);
 
-  const { chainId } = await hre.ethers.provider.getNetwork();
-  if (hre.network.name !== "localhost") {
-    await exportAddress(
-      chainId,
-      "ResolutionManager",
-      resolutionManagerContract.address
-    );
-    await exportAddress(
-      chainId,
-      "TelediskoToken",
-      telediskoTokenContract.address
-    );
-    await exportAddress(
-      chainId,
-      "ShareholderRegistry",
-      shareholderRegistryContract.address
-    );
-    await exportAddress(chainId, "Voting", votingContract.address);
-  }
+  await exportAddress(hre, resolutionManagerContract, "ResolutionManager");
+  await exportAddress(hre, telediskoTokenContract, "TelediskoToken");
+  await exportAddress(hre, shareholderRegistryContract, "ShareholderRegistry");
+  await exportAddress(hre, votingContract, "Voting");
 });
