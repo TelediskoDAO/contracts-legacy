@@ -75,8 +75,8 @@ contract ShareholderRegistryBase is ERC20 {
         bytes32 statusAfter
     ) internal virtual {
         if (
-            !_isAtLeast(1, statusAfter, CONTRIBUTOR_STATUS) &&
-            _isAtLeast(1, statusBefore, CONTRIBUTOR_STATUS)
+            _isAtLeast(1, statusBefore, CONTRIBUTOR_STATUS) &&
+            !_isAtLeast(1, statusAfter, CONTRIBUTOR_STATUS)
         ) {
             _voting.beforeRemoveContributor(account);
         }
@@ -88,8 +88,8 @@ contract ShareholderRegistryBase is ERC20 {
         bytes32 statusAfter
     ) internal virtual {
         if (
-            _isAtLeast(1, statusAfter, CONTRIBUTOR_STATUS) &&
-            !_isAtLeast(1, statusBefore, CONTRIBUTOR_STATUS)
+            !_isAtLeast(1, statusBefore, CONTRIBUTOR_STATUS) &&
+            _isAtLeast(1, statusAfter, CONTRIBUTOR_STATUS)
         ) {
             _voting.afterAddContributor(account);
         }

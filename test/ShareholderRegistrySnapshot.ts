@@ -179,7 +179,7 @@ describe("Shareholder Registry", () => {
         registry.setStatus(FOUNDER_STATUS, alice.address)
       ).to.not.emit(voting, "BeforeRemoveContributor");
     });
-    it.only("should call afterAddContributor when status updated for the first time to contributor", async () => {
+    it("should call afterAddContributor when status updated for the first time to contributor", async () => {
       await registry.transferFrom(
         founder.address,
         alice.address,
@@ -190,7 +190,7 @@ describe("Shareholder Registry", () => {
       ).to.emit(voting, "AfterAddContributor");
     });
 
-    it.only("should not call afterAddContributor when status is already at least contributor", async () => {
+    it("should not call afterAddContributor when status is already at least contributor", async () => {
       await registry.transferFrom(
         founder.address,
         alice.address,
@@ -202,7 +202,7 @@ describe("Shareholder Registry", () => {
       ).to.not.emit(voting, "AfterAddContributor");
     });
 
-    it.only("should not notify the Voting contract when adding an investor", async () => {
+    it("should not notify the Voting contract when adding an investor", async () => {
       await registry.transferFrom(
         founder.address,
         alice.address,

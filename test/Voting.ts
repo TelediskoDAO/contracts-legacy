@@ -168,7 +168,7 @@ describe("Voting", () => {
         .beforeRemoveContributor(delegator1.address);
     });
 
-    it.only("should throw an error when anyone but the SHAREHOLDER REGISTRY calls beforeRemoveContributor", async () => {
+    it("should throw an error when anyone but the SHAREHOLDER REGISTRY calls beforeRemoveContributor", async () => {
       let errorMessage = `AccessControl: account ${noDelegate.address.toLowerCase()} is missing role ${shareholderRegistryRole.toLowerCase()}`;
       await expect(
         voting.connect(noDelegate).afterAddContributor(delegator1.address)
