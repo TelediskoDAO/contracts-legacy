@@ -320,7 +320,7 @@ describe("Resolution", () => {
       expect(resolution2User2.hasVoted).false;
     });
 
-    it.only("invalid voting should not be counted", async () => {
+    it("invalid voting should not be counted", async () => {
       const resolutionId = ++currentResolution;
       await _prepareForVoting(user1, 42);
       await resolution.connect(user1).createResolution("Qxtest", 0, false);
