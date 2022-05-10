@@ -90,7 +90,7 @@ contract ResolutionManager is Context, AccessControl {
         uint256 noticePeriod,
         uint256 votingPeriod,
         bool canBeNegative
-    ) public onlyRole(Roles.MANAGER_ROLE) {
+    ) public onlyRole(Roles.OPERATOR_ROLE) {
         _addResolutionType(
             name,
             quorum,
@@ -102,19 +102,19 @@ contract ResolutionManager is Context, AccessControl {
 
     function setShareholderRegistry(IShareholderRegistry shareholderRegistry)
         external
-        onlyRole(Roles.MANAGER_ROLE)
+        onlyRole(Roles.OPERATOR_ROLE)
     {
         _shareholderRegistry = shareholderRegistry;
     }
 
     function setTelediskoToken(ITelediskoToken telediskoToken)
         external
-        onlyRole(Roles.MANAGER_ROLE)
+        onlyRole(Roles.OPERATOR_ROLE)
     {
         _telediskoToken = telediskoToken;
     }
 
-    function setVoting(IVoting voting) external onlyRole(Roles.MANAGER_ROLE) {
+    function setVoting(IVoting voting) external onlyRole(Roles.OPERATOR_ROLE) {
         _voting = voting;
     }
 
@@ -156,10 +156,10 @@ contract ResolutionManager is Context, AccessControl {
     function approveResolution(uint256 resolutionId) public {
         require(
             _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.FOUNDER_STATUS(),
+                _shareholderRegistry.MANAGING_BOARD_STATUS(),
                 _msgSender()
             ),
-            "Resolution: only founder can approve"
+            "Resolution: only managing board can approve"
         );
         require(
             resolutionId < _currentResolutionId,
@@ -190,10 +190,10 @@ contract ResolutionManager is Context, AccessControl {
 
         require(
             _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.FOUNDER_STATUS(),
+                _shareholderRegistry.MANAGING_BOARD_STATUS(),
                 _msgSender()
             ),
-            "Resolution: only founder can update"
+            "Resolution: only managing board can update"
         );
 
         ResolutionType storage resolutionType = resolutionTypes[
