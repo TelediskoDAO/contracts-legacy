@@ -10,6 +10,12 @@ contract TelediskoTokenBase is ERC20 {
     IVoting _voting;
     IShareholderRegistry _shareholderRegistry;
 
+    event LockedTokenOffered(address from, uint256 amount);
+    event LockedTokenTransferred(address from, address to, uint256 amount);
+    event VestingSet(address to, uint256 amount);
+
+    uint256 public constant OFFER_EXPIRATION = 7 days;
+
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
     // FIXME: remove?
@@ -71,7 +77,35 @@ contract TelediskoTokenBase is ERC20 {
         _voting.afterTokenTransfer(from, to, amount);
     }
 
-    function createOffer(uint256 amount) public {
+    function _transferLockedTokens(address from, address to, uint256 amount) internal {
+        emit LockedTokenTransferred(from, to, amount);
+    }
+    function _setVesting(address to, uint amount) internal {
+        emit VestingSet(to, amount);
+    }
 
+    function createOffer(uint256 amount) public {
+        emit LockedTokenOffered(_msgSender(), amount);
+    }
+    
+
+    // Tokens that are still in the vesting phase
+    function balanceVesting() public pure returns (uint256) {
+        return 10000 ether;
+    }
+
+    // Tokens owned by a contributor that cannot be freely transferred (see SHA Article 10)
+    function balanceLocked() public pure returns (uint256) {
+        return 2020 ether;
+    }
+
+    // Tokens owned by a contributor that are offered to other contributors
+    function balanceOffered() public pure returns (uint256) {
+        return 1982 ether;
+    }
+
+    // Tokens that has been offered but not bought by any other contributor.
+    function balanceUnlocked() public pure returns (uint256) {
+        return 420 ether;
     }
 }
