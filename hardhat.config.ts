@@ -3,6 +3,7 @@ dotEnvConfig();
 
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
+import "@openzeppelin/hardhat-upgrades";
 
 import "solidity-coverage";
 import "hardhat-gas-reporter";
