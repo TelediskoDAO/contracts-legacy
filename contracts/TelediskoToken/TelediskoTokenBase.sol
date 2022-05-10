@@ -70,4 +70,8 @@ contract TelediskoTokenBase is ERC20 {
     ) internal override {
         _voting.afterTokenTransfer(from, to, amount);
     }
+
+    function createOffer(uint256 amount) public {
+
+    }
 }
