@@ -1,10 +1,11 @@
+WALLETS_FILE=$1
 echo "Granting OPERATOR_ROLE on ResolutionManager"
-cat wallets_test.txt | xargs -n1 -IWALLET npx hardhat grant-role --contract ResolutionManager --role OPERATOR_ROLE --account WALLET --network mumbai
+cat $WALLETS_FILE | xargs -n1 -IWALLET npx hardhat grant-role --contract ResolutionManager --role OPERATOR_ROLE --account WALLET --network mumbai
 echo "Granting OPERATOR_ROLE on ShareholderRegistry"
-cat wallets_test.txt | xargs -n1 -IWALLET npx hardhat grant-role --contract ShareholderRegistry --role OPERATOR_ROLE --account WALLET --network mumbai
+cat $WALLETS_FILE | xargs -n1 -IWALLET npx hardhat grant-role --contract ShareholderRegistry --role OPERATOR_ROLE --account WALLET --network mumbai
 echo "Minting shares"
-cat wallets_test.txt | xargs -n1 -IWALLET npx hardhat mint-share WALLET --network mumbai
+cat $WALLETS_FILE | xargs -n1 -IWALLET npx hardhat mint-share WALLET --network mumbai
 echo "Setting MANAGING_BOARD status"
-cat wallets_test.txt | xargs -n1 -IWALLET npx hardhat set --account WALLET --status managing_board --network mumbai
+cat $WALLETS_FILE | xargs -n1 -IWALLET npx hardhat set --account WALLET --status managing_board --network mumbai
 echo "Minting tokens"
-cat wallets_test.txt | xargs -n1 -IWALLET npx hardhat mint --account WALLET --amount 42 --network mumbai
+cat $WALLETS_FILE | xargs -n1 -IWALLET npx hardhat mint --account WALLET --amount 42 --network mumbai
