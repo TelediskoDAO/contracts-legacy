@@ -80,6 +80,7 @@ contract TelediskoTokenBase is ERC20 {
     function _transferLockedTokens(address from, address to, uint256 amount) internal {
         emit LockedTokenTransferred(from, to, amount);
     }
+    
     function _setVesting(address to, uint amount) internal {
         emit VestingSet(to, amount);
     }
