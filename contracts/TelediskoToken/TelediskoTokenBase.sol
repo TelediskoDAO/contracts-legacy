@@ -21,8 +21,10 @@ contract TelediskoTokenBase is ERC20 {
 
     uint256 public constant OFFER_EXPIRATION = 7 days;
 
-    mapping(address => uint256) lockedTokens;
-    mapping(address => uint256) vestingTokens;
+    // TODO: what happens to vesting tokens when someone loses the contributor status?
+    // In theory they should be burned or added to a pool
+    mapping(address => uint256) balanceVesting;
+    mapping(address => uint256) balanceUnlocked;
     mapping(address => Offer[]) offers;
     mapping(address => uint256) firstElementIndices;
 
@@ -40,10 +42,6 @@ contract TelediskoTokenBase is ERC20 {
         _setShareholderRegistry(shareholderRegistry);
     }
 
-    function mint(address to, uint256 amount) public virtual {
-        _mint(to, amount);
-    }
-
     function _setVoting(IVoting voting) internal {
         _voting = voting;
     }
@@ -54,14 +52,26 @@ contract TelediskoTokenBase is ERC20 {
         _shareholderRegistry = shareholderRegistry;
     }
 
+    function _addOffer(address contributor, uint256 amount) internal {
+        // Vesting tokens cannot be offered because they need to be vested before they can be transferred
+        require(amount <= balanceOf(contributor) - balanceVesting[contributor] - balanceUnlocked[contributor], "Not enough tokens to offer");
+        Offer memory newOffer = Offer(block.timestamp, amount);
+        offers[contributor].push(newOffer);
+
+        _cleanUpOffers(contributor);
+    }
+
     function _cleanUpOffers(address contributor) internal {
         Offer[] memory contributorOffers = offers[contributor];
         uint256 length = contributorOffers.length;
         uint256 firstIndex = firstElementIndices[contributor];
 
         for(; firstIndex < length; firstIndex++) {
-            if(contributorOffers[firstIndex].creationTimestamp < block.timestamp + OFFER_EXPIRATION ||
-            contributorOffers[firstIndex].amount == 0) {
+            if(
+                contributorOffers[firstIndex].creationTimestamp < block.timestamp + OFFER_EXPIRATION ||
+                contributorOffers[firstIndex].amount == 0) {
+
+                balanceUnlocked[contributor] += contributorOffers[firstIndex].amount; 
                 delete contributorOffers[firstIndex];
             }
             else {
@@ -72,15 +82,7 @@ contract TelediskoTokenBase is ERC20 {
         firstElementIndices[contributor] = firstIndex;
     }
 
-    function _addOffer(address contributor, uint256 amount) internal {
-        require(amount <= lockedTokens[contributor], "Not enough tokens to offer");
-        Offer memory newOffer = Offer(block.timestamp, amount);
-        offers[contributor].push(newOffer);
-
-        _cleanUpOffers(contributor);
-    }
-
-    function _distributeOffers(address contributor, uint256 amount) internal {
+    function _unlockBalance(address contributor, uint256 amount) internal {
         _cleanUpOffers(contributor);
 
         Offer[] memory contributorOffers = offers[contributor];
@@ -93,87 +95,94 @@ contract TelediskoTokenBase is ERC20 {
                 break;
             }
             else {
-                 amount -= contributorOffers[firstIndex].amount;
-                 delete contributorOffers[firstIndex];
-                 firstElementIndices[contributor] = firstIndex;
+                amount -= contributorOffers[firstIndex].amount;
+                delete contributorOffers[firstIndex];
             }
         }
 
+        require(amount > 0, "Not enough offered tokens.");
+
+        balanceUnlocked[contributor] += amount;
         firstElementIndices[contributor] = firstIndex;
     }
 
-
-
-    // TODO: the logic to decide whether an account can transfer tokens or not depends on multiple components
-    // that have yet to be implemented. This is only a first draft.
-    /*
-    function _canTransfer(address account) internal returns (bool) {
-        // This check may potentially burn quite some gas
-        return
-            _shareholderRegistry.getStatus(account) !=
-            _shareholderRegistry.CONTRIBUTOR_STATUS();
-    }
-    */
-
-    function _transfer(
+    function _beforeTokenTransfer(
         address from,
         address to,
         uint256 amount
-    ) internal override {
-        /*
-        require(
-            _canTransfer(from),
-            "TelediskoToken: contributors cannot transfer shares before previous approval."
-        );
-        */
-        return super._transfer(from, to, amount);
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, amount);
+
+        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), from)) {
+            require(amount <= balanceUnlocked[from], "Not enough tradeable tokens.");
+        }
     }
 
     function _afterTokenTransfer(
         address from,
         address to,
         uint256 amount
-    ) internal override {
+    ) internal virtual override {
+        super._afterTokenTransfer(from, to, amount);
         _voting.afterTokenTransfer(from, to, amount);
 
         if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), from)) {
-            lockedTokens[to] += amount; 
-        }
-
-        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), to)) {
-            lockedTokens[to] += amount; 
+            balanceUnlocked[from] -= amount;
         }
     }
 
     function _transferLockedTokens(address from, address to, uint256 amount) internal {
+        _unlockBalance(from, amount);
+        _transfer(from, to, amount);
         emit LockedTokenTransferred(from, to, amount);
     }
 
-    function _setVesting(address to, uint amount) internal {
+    function _mintVesting(address to, uint amount) internal {
+        balanceVesting[to] = amount;
+        _mint(to, amount);
         emit VestingSet(to, amount);
     }
 
     function createOffer(uint256 amount) public {
+        _addOffer(msg.sender, amount);
         emit LockedTokenOffered(_msgSender(), amount);
     }
     
     // Tokens that are still in the vesting phase
-    function balanceVesting() public pure returns (uint256) {
-        return 10000 ether;
+    function balanceVestingOf(address account) public view returns (uint256) {
+        return balanceVesting[account];
     }
 
     // Tokens owned by a contributor that cannot be freely transferred (see SHA Article 10)
-    function balanceLocked() public pure returns (uint256) {
-        return 2020 ether;
+    function balanceLockedOf(address account) public view returns (uint256) {
+        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), account)) {
+            return balanceOf(account) - balanceUnlocked[account];
+        }
+
+        return 0;
     }
 
     // Tokens owned by a contributor that are offered to other contributors
-    function balanceOffered() public pure returns (uint256) {
-        return 1982 ether;
+    function balanceOfferedOf(address account) public view returns (uint256) {
+        Offer[] memory contributorOffers = offers[account];
+        uint256 length = contributorOffers.length;
+        
+        uint256 totalOffered = 0;
+
+        for(uint256 firstIndex = firstElementIndices[account]; firstIndex < length; firstIndex++) {
+            totalOffered += contributorOffers[firstIndex].amount;
+        }
+
+        return totalOffered;
     }
 
     // Tokens that has been offered but not bought by any other contributor.
-    function balanceUnlocked() public pure returns (uint256) {
-        return 420 ether;
+    function balanceUnlockedOf(address account) public view returns (uint256) {
+        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), account)) {
+            return balanceUnlocked[account];
+        }
+        else {
+            return balanceOf(account);
+        }
     }
 }

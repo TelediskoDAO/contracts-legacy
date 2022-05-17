@@ -40,10 +40,16 @@ contract TelediskoToken is TelediskoTokenSnapshot, AccessControl {
 
     function mint(address to, uint256 amount)
         public
-        override
-        onlyRole(Roles.RESOLUTION_ROLE)
+        onlyRole(Roles.OPERATOR_ROLE)
     {
         _mint(to, amount);
+    }
+
+    function mintVesting(address to, uint256 amount)
+        public
+        onlyRole(Roles.OPERATOR_ROLE)
+    {
+        _mintVesting(to, amount);
     }
 
     function transferLockedTokens(address from, address to, uint256 amount) public onlyRole(Roles.OPERATOR_ROLE) {
@@ -53,5 +59,4 @@ contract TelediskoToken is TelediskoTokenSnapshot, AccessControl {
     function setVesting(address to, uint amount) public onlyRole(Roles.OPERATOR_ROLE) {
         emit VestingSet(to, amount);
     }
-
 }
