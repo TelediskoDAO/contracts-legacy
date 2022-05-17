@@ -10,11 +10,21 @@ contract TelediskoTokenBase is ERC20 {
     IVoting _voting;
     IShareholderRegistry _shareholderRegistry;
 
+    struct Offer {
+        uint256 creationTimestamp;
+        uint256 amount;
+    }
+
     event LockedTokenOffered(address from, uint256 amount);
     event LockedTokenTransferred(address from, address to, uint256 amount);
     event VestingSet(address to, uint256 amount);
 
     uint256 public constant OFFER_EXPIRATION = 7 days;
+
+    mapping(address => uint256) lockedTokens;
+    mapping(address => uint256) vestingTokens;
+    mapping(address => Offer[]) offers;
+    mapping(address => uint256) firstElementIndices;
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
@@ -43,6 +53,56 @@ contract TelediskoTokenBase is ERC20 {
     {
         _shareholderRegistry = shareholderRegistry;
     }
+
+    function _cleanUpOffers(address contributor) internal {
+        Offer[] memory contributorOffers = offers[contributor];
+        uint256 length = contributorOffers.length;
+        uint256 firstIndex = firstElementIndices[contributor];
+
+        for(; firstIndex < length; firstIndex++) {
+            if(contributorOffers[firstIndex].creationTimestamp < block.timestamp + OFFER_EXPIRATION ||
+            contributorOffers[firstIndex].amount == 0) {
+                delete contributorOffers[firstIndex];
+            }
+            else {
+                break;
+            }
+        }
+
+        firstElementIndices[contributor] = firstIndex;
+    }
+
+    function _addOffer(address contributor, uint256 amount) internal {
+        require(amount <= lockedTokens[contributor], "Not enough tokens to offer");
+        Offer memory newOffer = Offer(block.timestamp, amount);
+        offers[contributor].push(newOffer);
+
+        _cleanUpOffers(contributor);
+    }
+
+    function _distributeOffers(address contributor, uint256 amount) internal {
+        _cleanUpOffers(contributor);
+
+        Offer[] memory contributorOffers = offers[contributor];
+        uint256 length = contributorOffers.length;
+        uint256 firstIndex = firstElementIndices[contributor];
+
+        for(; firstIndex < length; firstIndex++) {
+            if(contributorOffers[firstIndex].amount > amount) {
+                contributorOffers[firstIndex].amount -= amount;
+                break;
+            }
+            else {
+                 amount -= contributorOffers[firstIndex].amount;
+                 delete contributorOffers[firstIndex];
+                 firstElementIndices[contributor] = firstIndex;
+            }
+        }
+
+        firstElementIndices[contributor] = firstIndex;
+    }
+
+
 
     // TODO: the logic to decide whether an account can transfer tokens or not depends on multiple components
     // that have yet to be implemented. This is only a first draft.
@@ -75,6 +135,14 @@ contract TelediskoTokenBase is ERC20 {
         uint256 amount
     ) internal override {
         _voting.afterTokenTransfer(from, to, amount);
+
+        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), from)) {
+            lockedTokens[to] += amount; 
+        }
+
+        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), to)) {
+            lockedTokens[to] += amount; 
+        }
     }
 
     function _transferLockedTokens(address from, address to, uint256 amount) internal {
