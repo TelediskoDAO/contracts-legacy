@@ -30,18 +30,6 @@ contract TelediskoTokenBase is ERC20 {
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
-    // FIXME: remove?
-    function setVoting(IVoting voting) external virtual {
-        _setVoting(voting);
-    }
-
-    function setShareholderRegistry(IShareholderRegistry shareholderRegistry)
-        external
-        virtual
-    {
-        _setShareholderRegistry(shareholderRegistry);
-    }
-
     function _setVoting(IVoting voting) internal {
         _voting = voting;
     }
@@ -54,7 +42,13 @@ contract TelediskoTokenBase is ERC20 {
 
     function _addOffer(address contributor, uint256 amount) internal {
         // Vesting tokens cannot be offered because they need to be vested before they can be transferred
-        require(amount <= balanceOf(contributor) - balanceVesting[contributor] - balanceUnlocked[contributor], "Not enough tokens to offer");
+        require(
+            amount <=
+                balanceOf(contributor) -
+                    balanceVesting[contributor] -
+                    balanceUnlocked[contributor],
+            "Not enough tokens to offer"
+        );
         Offer memory newOffer = Offer(block.timestamp, amount);
         offers[contributor].push(newOffer);
 
@@ -66,15 +60,16 @@ contract TelediskoTokenBase is ERC20 {
         uint256 length = contributorOffers.length;
         uint256 firstIndex = firstElementIndices[contributor];
 
-        for(; firstIndex < length; firstIndex++) {
-            if(
-                contributorOffers[firstIndex].creationTimestamp < block.timestamp + OFFER_EXPIRATION ||
-                contributorOffers[firstIndex].amount == 0) {
-
-                balanceUnlocked[contributor] += contributorOffers[firstIndex].amount; 
+        for (; firstIndex < length; firstIndex++) {
+            if (
+                contributorOffers[firstIndex].creationTimestamp <
+                block.timestamp + OFFER_EXPIRATION ||
+                contributorOffers[firstIndex].amount == 0
+            ) {
+                balanceUnlocked[contributor] += contributorOffers[firstIndex]
+                    .amount;
                 delete contributorOffers[firstIndex];
-            }
-            else {
+            } else {
                 break;
             }
         }
@@ -89,12 +84,11 @@ contract TelediskoTokenBase is ERC20 {
         uint256 length = contributorOffers.length;
         uint256 firstIndex = firstElementIndices[contributor];
 
-        for(; firstIndex < length; firstIndex++) {
-            if(contributorOffers[firstIndex].amount > amount) {
+        for (; firstIndex < length; firstIndex++) {
+            if (contributorOffers[firstIndex].amount > amount) {
                 contributorOffers[firstIndex].amount -= amount;
                 break;
-            }
-            else {
+            } else {
                 amount -= contributorOffers[firstIndex].amount;
                 delete contributorOffers[firstIndex];
             }
@@ -113,8 +107,16 @@ contract TelediskoTokenBase is ERC20 {
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, amount);
 
-        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), from)) {
-            require(amount <= balanceUnlocked[from], "Not enough tradeable tokens.");
+        if (
+            _shareholderRegistry.isAtLeast(
+                _shareholderRegistry.CONTRIBUTOR_STATUS(),
+                from
+            )
+        ) {
+            require(
+                amount <= balanceUnlocked[from],
+                "Not enough tradeable tokens."
+            );
         }
     }
 
@@ -126,19 +128,28 @@ contract TelediskoTokenBase is ERC20 {
         super._afterTokenTransfer(from, to, amount);
         _voting.afterTokenTransfer(from, to, amount);
 
-        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), from)) {
+        if (
+            _shareholderRegistry.isAtLeast(
+                _shareholderRegistry.CONTRIBUTOR_STATUS(),
+                from
+            )
+        ) {
             balanceUnlocked[from] -= amount;
         }
     }
 
-    function _transferLockedTokens(address from, address to, uint256 amount) internal {
+    function _transferLockedTokens(
+        address from,
+        address to,
+        uint256 amount
+    ) internal {
         _unlockBalance(from, amount);
         _transfer(from, to, amount);
         emit LockedTokenTransferred(from, to, amount);
     }
 
     // TODO: ask Marko whether vesting tokens can be given only to contributors
-    function _mintVesting(address to, uint amount) internal {
+    function _mintVesting(address to, uint256 amount) internal {
         balanceVesting[to] = amount;
         _mint(to, amount);
         emit VestingSet(to, amount);
@@ -148,7 +159,7 @@ contract TelediskoTokenBase is ERC20 {
         _addOffer(msg.sender, amount);
         emit LockedTokenOffered(_msgSender(), amount);
     }
-    
+
     // Tokens that are still in the vesting phase
     function balanceVestingOf(address account) public view returns (uint256) {
         return balanceVesting[account];
@@ -156,7 +167,12 @@ contract TelediskoTokenBase is ERC20 {
 
     // Tokens owned by a contributor that cannot be freely transferred (see SHA Article 10)
     function balanceLockedOf(address account) public view returns (uint256) {
-        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), account)) {
+        if (
+            _shareholderRegistry.isAtLeast(
+                _shareholderRegistry.CONTRIBUTOR_STATUS(),
+                account
+            )
+        ) {
             return balanceOf(account) - balanceUnlocked[account];
         }
 
@@ -167,10 +183,14 @@ contract TelediskoTokenBase is ERC20 {
     function balanceOfferedOf(address account) public view returns (uint256) {
         Offer[] memory contributorOffers = offers[account];
         uint256 length = contributorOffers.length;
-        
+
         uint256 totalOffered = 0;
 
-        for(uint256 firstIndex = firstElementIndices[account]; firstIndex < length; firstIndex++) {
+        for (
+            uint256 firstIndex = firstElementIndices[account];
+            firstIndex < length;
+            firstIndex++
+        ) {
             totalOffered += contributorOffers[firstIndex].amount;
         }
 
@@ -179,10 +199,14 @@ contract TelediskoTokenBase is ERC20 {
 
     // Tokens that has been offered but not bought by any other contributor.
     function balanceUnlockedOf(address account) public view returns (uint256) {
-        if(_shareholderRegistry.isAtLeast(_shareholderRegistry.CONTRIBUTOR_STATUS(), account)) {
+        if (
+            _shareholderRegistry.isAtLeast(
+                _shareholderRegistry.CONTRIBUTOR_STATUS(),
+                account
+            )
+        ) {
             return balanceUnlocked[account];
-        }
-        else {
+        } else {
             return balanceOf(account);
         }
     }
