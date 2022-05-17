@@ -137,6 +137,7 @@ contract TelediskoTokenBase is ERC20 {
         emit LockedTokenTransferred(from, to, amount);
     }
 
+    // TODO: ask Marko whether vesting tokens can be given only to contributors
     function _mintVesting(address to, uint amount) internal {
         balanceVesting[to] = amount;
         _mint(to, amount);
