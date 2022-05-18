@@ -59,6 +59,6 @@ contract TelediskoToken is TelediskoTokenSnapshot, AccessControl {
         public
         onlyRole(Roles.OPERATOR_ROLE)
     {
-        emit VestingSet(to, amount);
+        _setVesting(to, amount);
     }
 }
