@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../ShareholderRegistry/IShareholderRegistry.sol";
@@ -25,7 +24,10 @@ contract Voting is VotingSnapshot, AccessControl, Initializable {
         return _snapshot();
     }
 
-    function setToken(IERC20 token) external onlyRole(Roles.OPERATOR_ROLE) {
+    function setToken(IERC20Upgradeable token)
+        external
+        onlyRole(Roles.OPERATOR_ROLE)
+    {
         super._setToken(token);
     }
 

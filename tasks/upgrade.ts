@@ -1,4 +1,4 @@
-import { task } from "hardhat/config";
+/*import { task } from "hardhat/config";
 import { VotingV2__factory } from "../typechain";
 import { exportAddress } from "./config";
 
@@ -22,3 +22,4 @@ task("upgrade", "Upgrade Voting to VotingV2", async (_, hre) => {
 
   await exportAddress(hre, votingV2Contract, "VotingV2");
 });
+*/
