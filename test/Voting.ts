@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { upgrades } from "hardhat";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { solidity } from "ethereum-waffle";
@@ -59,14 +60,23 @@ describe("Voting", () => {
       deployer
     )) as ERC20Mock__factory;
 
-    const ShareholderRegistryFactory = (await ethers.getContractFactory(
+    const ShareholderRegistryMockFactory = (await ethers.getContractFactory(
       "ShareholderRegistryMock",
       deployer
     )) as ShareholderRegistryMock__factory;
 
-    voting = await VotingFactory.deploy();
-    token = await ERC20MockFactory.deploy(voting.address);
-    shareholderRegistry = await ShareholderRegistryFactory.deploy();
+    voting = (await upgrades.deployProxy(VotingFactory, {
+      initializer: "initialize",
+    })) as Voting;
+    token = (await upgrades.deployProxy(ERC20MockFactory, [voting.address], {
+      initializer: "initialize",
+    })) as ERC20Mock;
+    shareholderRegistry = (await upgrades.deployProxy(
+      ShareholderRegistryMockFactory,
+      {
+        initializer: "initialize",
+      }
+    )) as ShareholderRegistryMock;
 
     await voting.deployed();
 
