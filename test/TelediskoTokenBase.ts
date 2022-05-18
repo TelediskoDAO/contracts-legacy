@@ -3,14 +3,15 @@ import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { solidity } from "ethereum-waffle";
 import {
-  TelediskoTokenBase,
-  TelediskoTokenBase__factory,
+  TelediskoToken,
+  TelediskoToken__factory,
   ShareholderRegistryMock,
   ShareholderRegistryMock__factory,
   VotingMock,
   VotingMock__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { roles } from "./utils/roles";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -19,7 +20,8 @@ const { expect } = chai;
 const AddressZero = ethers.constants.AddressZero;
 
 describe("TelediskoToken", () => {
-  let telediskoToken: TelediskoTokenBase;
+  let RESOLUTION_ROLE: string, OPERATOR_ROLE: string;
+  let telediskoToken: TelediskoToken;
   let voting: VotingMock;
   let shareholderRegistry: ShareholderRegistryMock;
   let deployer: SignerWithAddress,
@@ -29,10 +31,10 @@ describe("TelediskoToken", () => {
   beforeEach(async () => {
     [deployer, account, nonContributor] = await ethers.getSigners();
 
-    const TelediskoTokenBaseFactory = (await ethers.getContractFactory(
-      "TelediskoTokenBase",
+    const TelediskoTokenFactory = (await ethers.getContractFactory(
+      "TelediskoToken",
       deployer
-    )) as TelediskoTokenBase__factory;
+    )) as TelediskoToken__factory;
 
     const VotingMockFactory = (await ethers.getContractFactory(
       "VotingMock",
@@ -45,11 +47,17 @@ describe("TelediskoToken", () => {
     )) as ShareholderRegistryMock__factory;
 
     telediskoToken = (await upgrades.deployProxy(
-      TelediskoTokenBaseFactory,
+      TelediskoTokenFactory,
       ["Test", "TEST"],
       { initializer: "initialize" }
-    )) as TelediskoTokenBase;
+    )) as TelediskoToken;
     await telediskoToken.deployed();
+
+    RESOLUTION_ROLE = await roles.RESOLUTION_ROLE();
+    await telediskoToken.grantRole(RESOLUTION_ROLE, deployer.address);
+
+    OPERATOR_ROLE = await roles.OPERATOR_ROLE();
+    await telediskoToken.grantRole(OPERATOR_ROLE, deployer.address);
 
     voting = (await upgrades.deployProxy(VotingMockFactory)) as VotingMock;
     await voting.deployed();

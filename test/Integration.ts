@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { solidity } from "ethereum-waffle";
@@ -59,15 +59,25 @@ describe("Resolution", () => {
       deployer
     )) as ResolutionManager__factory;
 
-    voting = await VotingFactory.deploy();
-    token = await TelediskoTokenFactory.deploy("TestToken", "TT");
-    shareholderRegistry = await ShareholderRegistryFactory.deploy(
-      "TestShare",
-      "TS"
-    );
-
+    voting = (await upgrades.deployProxy(VotingFactory, {
+      initializer: "initialize",
+    })) as Voting;
     await voting.deployed();
+
+    token = (await upgrades.deployProxy(
+      TelediskoTokenFactory,
+      ["TestToken", "TT"],
+      { initializer: "initialize" }
+    )) as TelediskoToken;
     await token.deployed();
+
+    shareholderRegistry = (await upgrades.deployProxy(
+      ShareholderRegistryFactory,
+      ["TestShare", "TS"],
+      {
+        initializer: "initialize",
+      }
+    )) as ShareholderRegistry;
     await shareholderRegistry.deployed();
 
     var operatorRole = await roles.OPERATOR_ROLE();
@@ -89,12 +99,13 @@ describe("Resolution", () => {
     await token.setVoting(voting.address);
     await shareholderRegistry.setVoting(voting.address);
 
-    resolution = await ResolutionFactory.deploy(
-      shareholderRegistry.address,
-      token.address,
-      voting.address
-    );
-
+    resolution = (await upgrades.deployProxy(
+      ResolutionFactory,
+      [shareholderRegistry.address, token.address, voting.address],
+      {
+        initializer: "initialize",
+      }
+    )) as ResolutionManager;
     await resolution.deployed();
 
     await shareholderRegistry.grantRole(resolutionRole, resolution.address);

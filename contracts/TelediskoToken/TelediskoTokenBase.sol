@@ -2,25 +2,20 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "../Voting/IVoting.sol";
 import "../ShareholderRegistry/IShareholderRegistry.sol";
 
-contract TelediskoTokenBase is Initializable, ERC20Upgradeable {
+contract TelediskoTokenBase is ERC20Upgradeable {
     IVoting _voting;
     IShareholderRegistry _shareholderRegistry;
 
     function initialize(string memory name, string memory symbol)
         public
         virtual
-        initializer
     {
         __ERC20_init(name, symbol);
     }
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() initializer {}
 
     // FIXME: remove?
     function setVoting(IVoting voting) external virtual {
