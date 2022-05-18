@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "../ShareholderRegistry/IShareholderRegistry.sol";
@@ -9,8 +10,8 @@ import "../TelediskoToken/ITelediskoToken.sol";
 import "../Voting/IVoting.sol";
 import "../extensions/Roles.sol";
 
-contract ResolutionManager is Context, AccessControl {
-    uint256 private _currentResolutionId = 1;
+contract ResolutionManager is Initializable, Context, AccessControl {
+    uint256 private _currentResolutionId;
 
     event ResolutionCreated(address indexed from, uint256 indexed resolutionId);
     event ResolutionUpdated(address indexed from, uint256 indexed resolutionId);
@@ -63,11 +64,11 @@ contract ResolutionManager is Context, AccessControl {
 
     mapping(uint256 => Resolution) public resolutions;
 
-    constructor(
+    function initialize(        
         IShareholderRegistry shareholderRegistry,
         ITelediskoToken telediskoToken,
-        IVoting voting
-    ) {
+        IVoting voting) public initializer {
+        
         _shareholderRegistry = shareholderRegistry;
         _telediskoToken = telediskoToken;
         _voting = voting;
@@ -82,7 +83,12 @@ contract ResolutionManager is Context, AccessControl {
         _addResolutionType("significant", 51, 6 days, 4 days, false);
         _addResolutionType("dissolution", 66, 14 days, 6 days, false);
         _addResolutionType("routine", 51, 3 days, 2 days, true);
+
+        _currentResolutionId = 1;
     }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() initializer {}
 
     function addResolutionType(
         string memory name,
