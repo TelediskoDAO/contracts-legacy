@@ -6,9 +6,9 @@
     "Voting": "0x70b976d7C1aEb25B526031733321C15Ae4ca3A33"
   },
   "80001": {
-    "ResolutionManager": "0x682e7e6BdcD0699D9551fE53DbAe1729bAdbcD56",
-    "TelediskoToken": "0xAb9CadDf05CC6533905B555DB8a2D16d4A80E3C8",
-    "ShareholderRegistry": "0x8e9cc3bA014B457C0eF6D51d658CfbC7DDd7C92b",
-    "Voting": "0x612CbF3E7Faeef00F08E499CDa76f5D4d28123Bb"
+    "ResolutionManager": "0xAFaecC02588Bbb68500478688C80Bbb9c42a5080",
+    "TelediskoToken": "0x9f018Aade99cF05e66E965c9959Ec37fA702004d",
+    "ShareholderRegistry": "0xA6D85982A3Bd4ba6917277d7841BaD0F0988E3E3",
+    "Voting": "0x9e776d97440538a244935e857B699E953463C44E"
   }
 }

@@ -9,8 +9,6 @@ import "./VotingSnapshot.sol";
 import { Roles } from "../extensions/Roles.sol";
 
 contract Voting is VotingSnapshot, AccessControl, Initializable {
-    bytes32 private _contributorRole;
-
     function initialize() public initializer {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }

@@ -109,21 +109,26 @@ task("deploy", "Deploy DAO", async (_, hre) => {
 
   console.log("  Connect contracts");
   console.log("    Voting 🤝 ShareholderRegistry");
-  await votingContract.setShareholderRegistry(
+  let tx = await votingContract.setShareholderRegistry(
     shareholderRegistryContract.address
   );
+  await tx.wait(1);
   console.log("    Voting 🤝 TelediskoToken");
-  await votingContract.setToken(telediskoTokenContract.address);
+  tx = await votingContract.setToken(telediskoTokenContract.address);
+  await tx.wait(1);
 
   console.log("    TelediskoToken 🤝 ShareholderRegistry");
-  await telediskoTokenContract.setShareholderRegistry(
+  tx = await telediskoTokenContract.setShareholderRegistry(
     shareholderRegistryContract.address
   );
+  await tx.wait(1);
   console.log("    TelediskoToken 🤝 Voting");
-  await telediskoTokenContract.setVoting(votingContract.address);
+  tx = await telediskoTokenContract.setVoting(votingContract.address);
+  await tx.wait(1);
 
   console.log("    ShareholderRegistry 🤝 Voting");
-  await shareholderRegistryContract.setVoting(votingContract.address);
+  tx = await shareholderRegistryContract.setVoting(votingContract.address);
+  await tx.wait(1);
 
   await exportAddress(hre, resolutionManagerContract, "ResolutionManager");
   await exportAddress(hre, telediskoTokenContract, "TelediskoToken");
