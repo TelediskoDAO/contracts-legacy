@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { solidity } from "ethereum-waffle";
@@ -44,12 +44,22 @@ describe("TelediskoToken", () => {
       deployer
     )) as ShareholderRegistryMock__factory;
 
-    telediskoToken = await TelediskoTokenBaseFactory.deploy("Test", "TEST");
-    voting = await VotingMockFactory.deploy();
-    shareholderRegistry = await ShareholderRegistryMockFactory.deploy();
-
+    telediskoToken = (await upgrades.deployProxy(
+      TelediskoTokenBaseFactory,
+      ["Test", "TEST"],
+      { initializer: "initialize" }
+    )) as TelediskoTokenBase;
     await telediskoToken.deployed();
+
+    voting = (await upgrades.deployProxy(VotingMockFactory)) as VotingMock;
     await voting.deployed();
+
+    shareholderRegistry = (await upgrades.deployProxy(
+      ShareholderRegistryMockFactory,
+      {
+        initializer: "initialize",
+      }
+    )) as ShareholderRegistryMock;
     await shareholderRegistry.deployed();
 
     await telediskoToken.setVoting(voting.address);

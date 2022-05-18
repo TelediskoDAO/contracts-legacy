@@ -5,10 +5,11 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "../Voting/IVoting.sol";
 
-contract ShareholderRegistryBase is ERC20Upgradeable {
+contract ShareholderRegistryBase is Initializable, ERC20Upgradeable {
     bytes32 public SHAREHOLDER_STATUS;
     bytes32 public INVESTOR_STATUS;
     bytes32 public CONTRIBUTOR_STATUS;
@@ -27,6 +28,7 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
     function initialize(string memory name, string memory symbol)
         public
         virtual
+        initializer
     {
         __ERC20_init(name, symbol);
         SHAREHOLDER_STATUS = keccak256("SHAREHOLDER_STATUS");
@@ -34,6 +36,9 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
         CONTRIBUTOR_STATUS = keccak256("CONTRIBUTOR_STATUS");
         MANAGING_BOARD_STATUS = keccak256("MANAGING_BOARD_STATUS");
     }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() initializer {}
 
     function _setVoting(IVoting voting) internal {
         _voting = voting;
