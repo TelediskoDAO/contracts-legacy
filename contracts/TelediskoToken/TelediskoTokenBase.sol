@@ -10,6 +10,9 @@ contract TelediskoTokenBase is ERC20Upgradeable {
     IVoting _voting;
     IShareholderRegistry _shareholderRegistry;
 
+    event OfferCreated(address from, uint256 amount);
+    event LockedTokenTransferred(address from, address to, uint256 amount);
+
     function initialize(string memory name, string memory symbol)
         public
         virtual
@@ -74,5 +77,38 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         uint256 amount
     ) internal override {
         _voting.afterTokenTransfer(from, to, amount);
+    }
+
+    // Dummy methods
+    function transferLockedTokens(
+        address from,
+        address to,
+        uint256 amount
+    ) public {
+        emit LockedTokenTransferred(from, to, amount);
+    }
+
+    function createOffer(uint256 amount) public {
+        emit OfferCreated(msg.sender, amount);
+    }
+
+    // Tokens that are still in the vesting phase
+    function balanceVestingOf(address) public pure returns (uint256) {
+        return 1;
+    }
+
+    // Tokens owned by a contributor that cannot be freely transferred (see SHA Article 10)
+    function balanceLockedOf(address) public pure returns (uint256) {
+        return 2;
+    }
+
+    // Tokens owned by a contributor that are offered to other contributors
+    function balanceOfferedOf(address) public pure returns (uint256) {
+        return 3;
+    }
+
+    // Tokens that has been offered but not bought by any other contributor.
+    function balanceUnlockedOf(address) public pure returns (uint256) {
+        return 5;
     }
 }

@@ -11,8 +11,6 @@ import {
   TelediskoToken__factory,
   Voting,
   Voting__factory,
-  VotingV2,
-  VotingV2__factory,
 } from "../typechain";
 
 export const DEFAULT_CONFIG_PATH = "./deployments/networks.json";
@@ -30,8 +28,7 @@ export type DAOContract =
   | TelediskoToken
   | ResolutionManager
   | ShareholderRegistry
-  | Voting
-  | VotingV2;
+  | Voting;
 
 export type NetworkConfig = {
   [key: number]: {
@@ -92,8 +89,7 @@ type ContractFactory =
   | typeof ShareholderRegistry__factory
   | typeof ResolutionManager__factory
   | typeof TelediskoToken__factory
-  | typeof Voting__factory
-  | typeof VotingV2__factory;
+  | typeof Voting__factory;
 
 export async function loadContract<T extends ContractFactory>(
   hre: HardhatRuntimeEnvironment,
@@ -150,8 +146,6 @@ export async function loadContractByName(
       return TelediskoToken__factory.connect(address, deployer);
     case "Voting":
       return Voting__factory.connect(address, deployer);
-    case "VotingV2":
-      return VotingV2__factory.connect(address, deployer);
     default:
       console.error(`Cannot find contract with name ${name}.`);
       process.exit(1);
