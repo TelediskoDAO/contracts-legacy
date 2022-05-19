@@ -47,12 +47,12 @@ contract TelediskoToken is TelediskoTokenSnapshot, AccessControl {
         _mintVesting(to, amount);
     }
 
-    function transferOfferedTokens(
+    function matchOffer(
         address from,
         address to,
         uint256 amount
     ) public onlyRole(Roles.OPERATOR_ROLE) {
-        emit LockedTokenTransferred(from, to, amount);
+        _matchOffer(from, to, amount);
     }
 
     function setVesting(address to, uint256 amount)

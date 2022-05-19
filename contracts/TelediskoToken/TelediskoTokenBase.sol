@@ -27,17 +27,16 @@ contract TelediskoTokenBase is ERC20 {
 
     event OfferCreated(address from, uint256 amount);
     event OfferDeleted(address from, uint256 amount);
-    event LockedTokenTransferred(address from, address to, uint256 amount);
+    event OfferMatched(address from, address to, uint256 amount);
     event VestingSet(address to, uint256 amount);
 
     uint256 public constant OFFER_EXPIRATION = 7 days;
 
     // TODO: what happens to vesting tokens when someone loses the contributor status?
     // In theory they should be burned or added to a pool
-    mapping(address => uint256) internal _balanceVesting;
-    mapping(address => uint256) internal _balanceUnlocked;
+    mapping(address => uint256) internal _vestingBalance;
+    mapping(address => uint256) internal _unlockedBalance;
     mapping(address => Offers) internal _offers;
-    mapping(address => uint256) internal firstElementIndices;
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
@@ -56,8 +55,8 @@ contract TelediskoTokenBase is ERC20 {
         require(
             amount <=
                 balanceOf(account) -
-                    _balanceVesting[account] -
-                    _balanceUnlocked[account],
+                    _vestingBalance[account] -
+                    _unlockedBalance[account],
             "TelediskoToken: offered amount exceeds balance"
         );
 
@@ -76,10 +75,11 @@ contract TelediskoTokenBase is ERC20 {
                 // If offer expired:
 
                 // 1. free the tokens
-                _balanceUnlocked[account] += offer.amount;
+                _unlockedBalance[account] += offer.amount;
 
                 // 2. delete the expired offer
                 delete offers.offer[offers.start++];
+                emit OfferDeleted(account, offer.amount);
             } else {
                 // If offer is active check if the amount is bigger than the
                 // current offer.
@@ -88,16 +88,17 @@ contract TelediskoTokenBase is ERC20 {
 
                     // 1. free the tokens (put them in unlocked balance, we will
                     // move them immediately after the method returns)
-                    _balanceUnlocked[account] += offer.amount;
+                    _unlockedBalance[account] += offer.amount;
 
                     // 2. remove the offer
                     delete offers.offer[offers.start++];
+                    emit OfferDeleted(account, offer.amount);
 
                     // If the amount is smaller than the offer amount, then
                 } else {
                     // 1. free the tokens (put them in unlocked balance, we will
                     // move them immediately after the method returns)
-                    _balanceUnlocked[account] += amount;
+                    _unlockedBalance[account] += amount;
 
                     // 2. decrease the amount of offered tokens
                     offer.amount -= amount;
@@ -131,7 +132,7 @@ contract TelediskoTokenBase is ERC20 {
             //  zero so it just consumes what's expired
             _drainOffers(from, 0);
             require(
-                amount <= _balanceUnlocked[from],
+                amount <= _unlockedBalance[from],
                 "Not enough tradeable tokens."
             );
         }
@@ -147,7 +148,7 @@ contract TelediskoTokenBase is ERC20 {
 
         // Invariants
         require(
-            balanceOf(from) >= _balanceVesting[from],
+            balanceOf(from) >= _vestingBalance[from],
             "TelediskoToken: transfer amount exceeds vesting"
         );
 
@@ -157,33 +158,33 @@ contract TelediskoTokenBase is ERC20 {
                 from
             )
         ) {
-            _balanceUnlocked[from] -= amount;
+            _unlockedBalance[from] -= amount;
         }
     }
 
-    function _transferOfferedTokens(
+    function _matchOffer(
         address from,
         address to,
         uint256 amount
     ) internal {
         _drainOffers(from, amount);
         _transfer(from, to, amount);
-        emit LockedTokenTransferred(from, to, amount);
+        emit OfferMatched(from, to, amount);
     }
 
     // TODO: ask Marko whether vesting tokens can be given only to contributors
     function _mintVesting(address to, uint256 amount) internal {
-        _balanceVesting[to] += amount;
+        _vestingBalance[to] += amount;
         _mint(to, amount);
         emit VestingSet(to, amount);
     }
 
     function _setVesting(address account, uint256 amount) internal {
         require(
-            amount < _balanceVesting[account],
+            amount < _vestingBalance[account],
             "TelediskoToken: vesting can only be decreased"
         );
-        _balanceVesting[account] = amount;
+        _vestingBalance[account] = amount;
         emit VestingSet(account, amount);
     }
 
@@ -205,7 +206,7 @@ contract TelediskoTokenBase is ERC20 {
     {
         Offers storage offers = _offers[account];
 
-        uint256 unlocked = _balanceUnlocked[account];
+        uint256 unlocked = _unlockedBalance[account];
         uint256 offered;
 
         for (uint128 i = offers.start; i < offers.end; i++) {
@@ -221,8 +222,8 @@ contract TelediskoTokenBase is ERC20 {
     }
 
     // Tokens that are still in the vesting phase
-    function balanceVestingOf(address account) public view returns (uint256) {
-        return _balanceVesting[account];
+    function vestingBalanceOf(address account) public view returns (uint256) {
+        return _vestingBalance[account];
     }
 
     // Tokens owned by a contributor that cannot be freely transferred (see SHA Article 10)
@@ -241,7 +242,7 @@ contract TelediskoTokenBase is ERC20 {
     }
 
     // Tokens owned by a contributor that are offered to other contributors
-    function balanceOfferedOf(address account) public view returns (uint256) {
+    function offeredBalanceOf(address account) public view returns (uint256) {
         if (
             _shareholderRegistry.isAtLeast(
                 _shareholderRegistry.CONTRIBUTOR_STATUS(),
@@ -257,7 +258,7 @@ contract TelediskoTokenBase is ERC20 {
 
     // Tokens that has been offered but not bought by any other contributor
     // within the allowed timeframe.
-    function balanceUnlockedOf(address account) public view returns (uint256) {
+    function unlockedBalanceOf(address account) public view returns (uint256) {
         if (
             _shareholderRegistry.isAtLeast(
                 _shareholderRegistry.CONTRIBUTOR_STATUS(),

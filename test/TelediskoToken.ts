@@ -116,9 +116,9 @@ describe("TelediskoToken", () => {
 
     it("should update the vesting balance", async () => {
       await telediskoToken.mintVesting(account.address, 100);
-      expect(await telediskoToken.balanceVestingOf(account.address)).equal(100);
+      expect(await telediskoToken.vestingBalanceOf(account.address)).equal(100);
       await telediskoToken.mintVesting(account.address, 10);
-      expect(await telediskoToken.balanceVestingOf(account.address)).equal(110);
+      expect(await telediskoToken.vestingBalanceOf(account.address)).equal(110);
     });
 
     it("should allow to transfer balance that is not vesting", async () => {
@@ -137,7 +137,7 @@ describe("TelediskoToken", () => {
     it("should allow to decrease the vesting balance", async () => {
       await telediskoToken.mintVesting(account.address, 100);
       await telediskoToken.setVesting(account.address, 90);
-      expect(await telediskoToken.balanceVestingOf(account.address)).equal(90);
+      expect(await telediskoToken.vestingBalanceOf(account.address)).equal(90);
     });
 
     it("should not allow to increase the vesting balance", async () => {
@@ -197,7 +197,7 @@ describe("TelediskoToken", () => {
       });
 
       it("should drain offers from the old one to the new one", async () => {
-        await telediskoToken.transferLockedTokens(
+        await telediskoToken.matchOffer(
           contributor.address,
           contributor2.address,
           4
