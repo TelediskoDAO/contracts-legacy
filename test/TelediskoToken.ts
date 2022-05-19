@@ -11,6 +11,7 @@ import {
   VotingMock__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
 import { roles } from "./utils/roles";
 
 chai.use(solidity);
@@ -187,21 +188,107 @@ describe("TelediskoToken", () => {
       });
     });
 
-    describe.only("drain", async () => {
+    describe.only("match", async () => {
+      let ts: number;
+      const DAY = 60 * 60 * 24;
+      const WEEK = DAY * 7;
+
+      beforeEach(async () => {
+        // At the end of this method we have:
+        //
+        // - An offer made on `ts`
+        // - An offer made on `ts + 2 days`
+        // - An offer made on `ts + 4 days`
+        await telediskoToken.mintVesting(contributor.address, 1000);
+        await telediskoToken.mint(contributor.address, 100);
+        ts = await getEVMTimestamp();
+        await telediskoToken.connect(contributor).createOffer(11);
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 2);
+        await telediskoToken.connect(contributor).createOffer(25);
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 4);
+        await telediskoToken.connect(contributor).createOffer(35);
+      });
+
+      it("should drain the oldest active offer", async () => {
+        await expect(
+          telediskoToken.matchOffer(
+            contributor.address,
+            contributor2.address,
+            11
+          )
+        )
+          .emit(telediskoToken, "OfferMatched")
+          .withArgs(contributor.address, contributor2.address, 11, 0)
+          .emit(telediskoToken, "Transfer")
+          .withArgs(contributor.address, contributor2.address, 11);
+      });
+
+      it("should match the oldest active offer and ignore the expired ones", async () => {
+        // Make offer `11` expire. It should emit a deleted event
+        await setEVMTimestamp(ts + WEEK + DAY);
+        await expect(
+          telediskoToken.matchOffer(
+            contributor.address,
+            contributor2.address,
+            25
+          )
+        )
+          .emit(telediskoToken, "OfferExpired")
+          .withArgs(contributor.address, 11)
+          .emit(telediskoToken, "OfferMatched")
+          .withArgs(contributor.address, contributor2.address, 25, 0)
+          .emit(telediskoToken, "Transfer")
+          .withArgs(contributor.address, contributor2.address, 25);
+      });
+
+      it("should drain multiple active offers from the old one to the new one", async () => {
+        await expect(
+          telediskoToken.matchOffer(
+            contributor.address,
+            contributor2.address,
+            11 + 25 + 1
+          )
+        )
+          .emit(telediskoToken, "OfferMatched")
+          .withArgs(contributor.address, contributor2.address, 11, 0)
+          .emit(telediskoToken, "OfferMatched")
+          .withArgs(contributor.address, contributor2.address, 25, 0)
+          .emit(telediskoToken, "OfferMatched")
+          .withArgs(contributor.address, contributor2.address, 1, 35 - 1)
+          .emit(telediskoToken, "Transfer")
+          .withArgs(contributor.address, contributor2.address, 11 + 25 + 1);
+      });
+
+      it("should not allow to match more than what's available", async () => {
+        await expect(
+          telediskoToken.matchOffer(
+            contributor.address,
+            contributor2.address,
+            11 + 25 + 36
+          )
+        ).revertedWith("TelediskoToken: amount exceeds offer");
+      });
+    });
+
+    describe.skip("balances", async () => {
       beforeEach(async () => {
         await telediskoToken.mintVesting(contributor.address, 1000);
         await telediskoToken.mint(contributor.address, 100);
-        await telediskoToken.connect(contributor).createOffer(5);
-        await telediskoToken.connect(contributor).createOffer(15);
-        await telediskoToken.connect(contributor).createOffer(2);
+        await telediskoToken.connect(contributor).createOffer(11);
+        await telediskoToken.connect(contributor).createOffer(25);
+        await telediskoToken.connect(contributor).createOffer(35);
       });
 
-      it("should drain offers from the old one to the new one", async () => {
-        await telediskoToken.matchOffer(
-          contributor.address,
-          contributor2.address,
-          4
-        );
+      it("should calculate the offered balance", async () => {
+        expect(
+          await telediskoToken
+            .connect(contributor)
+            .offeredBalanceOf(contributor.address)
+        ).equal(71);
       });
     });
   });

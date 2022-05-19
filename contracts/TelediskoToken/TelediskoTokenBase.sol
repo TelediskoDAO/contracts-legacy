@@ -26,8 +26,8 @@ contract TelediskoTokenBase is ERC20 {
     }
 
     event OfferCreated(address from, uint256 amount);
-    event OfferDeleted(address from, uint256 amount);
-    event OfferMatched(address from, address to, uint256 amount);
+    event OfferExpired(address from, uint256 amount);
+    event OfferMatched(address from, address to, uint256 amount, uint256 left);
     event VestingSet(address to, uint256 amount);
 
     uint256 public constant OFFER_EXPIRATION = 7 days;
@@ -65,21 +65,25 @@ contract TelediskoTokenBase is ERC20 {
         emit OfferCreated(_msgSender(), amount);
     }
 
-    function _drainOffers(address account, uint256 amount) internal {
-        Offers storage offers = _offers[account];
+    function _drainOffers(
+        address from,
+        address to,
+        uint256 amount
+    ) internal {
+        Offers storage offers = _offers[from];
 
         for (uint128 i = offers.start; i < offers.end; i++) {
             Offer storage offer = offers.offer[i];
 
-            if (offer.ts > block.timestamp + OFFER_EXPIRATION) {
+            if (block.timestamp > offer.ts + OFFER_EXPIRATION) {
                 // If offer expired:
 
                 // 1. free the tokens
-                _unlockedBalance[account] += offer.amount;
+                _unlockedBalance[from] += offer.amount;
 
                 // 2. delete the expired offer
+                emit OfferExpired(from, offer.amount);
                 delete offers.offer[offers.start++];
-                emit OfferDeleted(account, offer.amount);
             } else {
                 // If offer is active check if the amount is bigger than the
                 // current offer.
@@ -88,20 +92,21 @@ contract TelediskoTokenBase is ERC20 {
 
                     // 1. free the tokens (put them in unlocked balance, we will
                     // move them immediately after the method returns)
-                    _unlockedBalance[account] += offer.amount;
+                    _unlockedBalance[from] += offer.amount;
 
                     // 2. remove the offer
+                    emit OfferMatched(from, to, offer.amount, 0);
                     delete offers.offer[offers.start++];
-                    emit OfferDeleted(account, offer.amount);
 
                     // If the amount is smaller than the offer amount, then
                 } else {
                     // 1. free the tokens (put them in unlocked balance, we will
                     // move them immediately after the method returns)
-                    _unlockedBalance[account] += amount;
+                    _unlockedBalance[from] += amount;
 
                     // 2. decrease the amount of offered tokens
                     offer.amount -= amount;
+                    emit OfferMatched(from, to, amount, offer.amount);
 
                     // 3. we've exhausted the amount, set it to zero and go back
                     // to the calling function
@@ -114,7 +119,7 @@ contract TelediskoTokenBase is ERC20 {
             }
         }
 
-        require(false, "TelediskoToken: amount exceeds offers");
+        require(false, "TelediskoToken: amount exceeds offer");
     }
 
     function _beforeTokenTransfer(
@@ -129,8 +134,8 @@ contract TelediskoTokenBase is ERC20 {
                 from
             )
         ) {
-            //  zero so it just consumes what's expired
-            _drainOffers(from, 0);
+            // Amount set to zero so it just consumes what's expired
+            _drainOffers(from, address(0), 0);
             require(
                 amount <= _unlockedBalance[from],
                 "Not enough tradeable tokens."
@@ -167,9 +172,8 @@ contract TelediskoTokenBase is ERC20 {
         address to,
         uint256 amount
     ) internal {
-        _drainOffers(from, amount);
+        _drainOffers(from, to, amount);
         _transfer(from, to, amount);
-        emit OfferMatched(from, to, amount);
     }
 
     // TODO: ask Marko whether vesting tokens can be given only to contributors
