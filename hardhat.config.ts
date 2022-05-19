@@ -45,6 +45,7 @@ const config: HardhatUserConfig = {
     },
     mumbai: {
       url: `https://polygon-testnet.blastapi.io/${BLAST_API_KEY}`,
+
       accounts: [MUMBAI_PRIVATE_KEY],
     },
   },
