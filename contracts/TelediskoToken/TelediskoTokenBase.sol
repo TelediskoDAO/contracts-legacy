@@ -111,12 +111,14 @@ contract TelediskoTokenBase is ERC20 {
                     // 3. we've exhausted the amount, set it to zero and go back
                     // to the calling function
                     amount = 0;
+                    break;
                 }
             }
-            if (amount == 0) {
-                // We made it
-                return;
-            }
+        }
+
+        if (amount == 0) {
+            // We made it
+            return;
         }
 
         require(false, "TelediskoToken: amount exceeds offer");
@@ -138,7 +140,7 @@ contract TelediskoTokenBase is ERC20 {
             _drainOffers(from, address(0), 0);
             require(
                 amount <= _unlockedBalance[from],
-                "Not enough tradeable tokens."
+                "TelediskoToken: transfer amount exceeds unlocked tokens"
             );
         }
     }
@@ -216,7 +218,7 @@ contract TelediskoTokenBase is ERC20 {
         for (uint128 i = offers.start; i < offers.end; i++) {
             Offer storage offer = offers.offer[i];
 
-            if (offer.ts > block.timestamp + OFFER_EXPIRATION) {
+            if (block.timestamp > offer.ts + OFFER_EXPIRATION) {
                 unlocked += offer.amount;
             } else {
                 offered += offer.amount;
@@ -231,15 +233,15 @@ contract TelediskoTokenBase is ERC20 {
     }
 
     // Tokens owned by a contributor that cannot be freely transferred (see SHA Article 10)
-    function balanceLockedOf(address account) public view returns (uint256) {
+    function lockedBalanceOf(address account) public view returns (uint256) {
         if (
             _shareholderRegistry.isAtLeast(
                 _shareholderRegistry.CONTRIBUTOR_STATUS(),
                 account
             )
         ) {
-            (uint256 offered, uint256 unlocked) = _calculateOffersOf(account);
-            return balanceOf(account) - unlocked + offered;
+            (, uint256 unlocked) = _calculateOffersOf(account);
+            return balanceOf(account) - unlocked;
         }
 
         return 0;

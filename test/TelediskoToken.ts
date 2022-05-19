@@ -107,6 +107,24 @@ describe("TelediskoToken", () => {
     });
   });
 
+  describe("minting", async () => {
+    it("should disable transfer when tokens are minted to a contributor", async () => {
+      telediskoToken.mint(contributor.address, 10);
+      await expect(
+        telediskoToken.connect(contributor).transfer(contributor2.address, 1)
+      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+    });
+
+    it("should allow transfer when tokens are minted to anyone else", async () => {
+      telediskoToken.mint(account.address, 10);
+      await expect(
+        telediskoToken.connect(account).transfer(contributor2.address, 1)
+      )
+        .emit(telediskoToken, "Transfer")
+        .withArgs(account.address, contributor2.address, 1);
+    });
+  });
+
   describe("vesting", async () => {
     it("should not allow balance in vesting to be transferred", async () => {
       await telediskoToken.mintVesting(account.address, 100);
@@ -188,7 +206,7 @@ describe("TelediskoToken", () => {
       });
     });
 
-    describe.only("match", async () => {
+    describe("match", async () => {
       let ts: number;
       const DAY = 60 * 60 * 24;
       const WEEK = DAY * 7;
@@ -213,7 +231,7 @@ describe("TelediskoToken", () => {
         await telediskoToken.connect(contributor).createOffer(35);
       });
 
-      it("should drain the oldest active offer", async () => {
+      it("should match the oldest active offer", async () => {
         await expect(
           telediskoToken.matchOffer(
             contributor.address,
@@ -228,7 +246,7 @@ describe("TelediskoToken", () => {
       });
 
       it("should match the oldest active offer and ignore the expired ones", async () => {
-        // Make offer `11` expire. It should emit a deleted event
+        // Make offer `11` expire
         await setEVMTimestamp(ts + WEEK + DAY);
         await expect(
           telediskoToken.matchOffer(
@@ -245,7 +263,7 @@ describe("TelediskoToken", () => {
           .withArgs(contributor.address, contributor2.address, 25);
       });
 
-      it("should drain multiple active offers from the old one to the new one", async () => {
+      it("should match multiple active offers from the old one to the new one", async () => {
         await expect(
           telediskoToken.matchOffer(
             contributor.address,
@@ -272,23 +290,157 @@ describe("TelediskoToken", () => {
           )
         ).revertedWith("TelediskoToken: amount exceeds offer");
       });
+
+      it("should not allow to match more than what's available when old offers expire", async () => {
+        // Make offer `11` and `15` expire
+        await setEVMTimestamp(ts + WEEK + DAY * 3);
+        await expect(
+          telediskoToken.matchOffer(
+            contributor.address,
+            contributor2.address,
+            36
+          )
+        ).revertedWith("TelediskoToken: amount exceeds offer");
+      });
     });
 
-    describe.skip("balances", async () => {
+    describe("transfer", async () => {
+      let ts: number;
+      const DAY = 60 * 60 * 24;
+      const WEEK = DAY * 7;
+
       beforeEach(async () => {
+        // At the end of this method we have:
+        //
+        // - An offer made on `ts`
+        // - An offer made on `ts + 2 days`
+        // - An offer made on `ts + 4 days`
         await telediskoToken.mintVesting(contributor.address, 1000);
         await telediskoToken.mint(contributor.address, 100);
+        ts = await getEVMTimestamp();
         await telediskoToken.connect(contributor).createOffer(11);
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 2);
         await telediskoToken.connect(contributor).createOffer(25);
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 4);
         await telediskoToken.connect(contributor).createOffer(35);
       });
 
-      it("should calculate the offered balance", async () => {
-        expect(
-          await telediskoToken
-            .connect(contributor)
-            .offeredBalanceOf(contributor.address)
-        ).equal(71);
+      it("should allow to transfer balance from expired offers", async () => {
+        // Make offer `11` expire
+        await setEVMTimestamp(ts + WEEK + DAY);
+        await expect(
+          telediskoToken.connect(contributor).transfer(contributor2.address, 11)
+        )
+          .emit(telediskoToken, "OfferExpired")
+          .withArgs(contributor.address, 11)
+          .emit(telediskoToken, "Transfer")
+          .withArgs(contributor.address, contributor2.address, 11);
+      });
+
+      it("should not allow to transfer balance if offer is still standing", async () => {
+        // Make offer `11` expire
+        await setEVMTimestamp(ts + WEEK + DAY);
+        await expect(
+          telediskoToken.connect(contributor).transfer(contributor2.address, 12)
+        ).revertedWith(
+          "TelediskoToken: transfer amount exceeds unlocked tokens"
+        );
+      });
+    });
+
+    describe("balances", async () => {
+      let ts: number;
+      const DAY = 60 * 60 * 24;
+      const WEEK = DAY * 7;
+
+      beforeEach(async () => {
+        // At the end of this method we have:
+        //
+        // - An offer made on `ts`
+        // - An offer made on `ts + 2 days`
+        // - An offer made on `ts + 4 days`
+        await telediskoToken.mintVesting(contributor.address, 1000);
+        await telediskoToken.mint(contributor.address, 100);
+        ts = await getEVMTimestamp();
+        await telediskoToken.connect(contributor).createOffer(11);
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 2);
+        await telediskoToken.connect(contributor).createOffer(25);
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 4);
+        await telediskoToken.connect(contributor).createOffer(35);
+      });
+
+      describe("offeredBalanceOf", async () => {
+        it("should be equal to the amount of tokens offered", async () => {
+          await mineEVMBlock();
+          expect(
+            await telediskoToken
+              .connect(contributor)
+              .offeredBalanceOf(contributor.address)
+          ).equal(11 + 25 + 35);
+        });
+
+        it("should be equal to the amount of tokens offered minus the expired offers", async () => {
+          // Make offer `11` expire
+          await setEVMTimestamp(ts + WEEK + DAY);
+          await mineEVMBlock();
+          expect(
+            await telediskoToken
+              .connect(contributor)
+              .offeredBalanceOf(contributor.address)
+          ).equal(25 + 35);
+        });
+      });
+
+      describe("unlockedBalanceOf", async () => {
+        it("should be equal to zero when contributor just started offering their tokens", async () => {
+          await mineEVMBlock();
+          expect(
+            await telediskoToken
+              .connect(contributor)
+              .unlockedBalanceOf(contributor.address)
+          ).equal(0);
+        });
+
+        it("should be equal to the expired offers", async () => {
+          // Make offer `11` and `25` expire
+          await setEVMTimestamp(ts + WEEK + DAY * 3);
+          await mineEVMBlock();
+          expect(
+            await telediskoToken
+              .connect(contributor)
+              .unlockedBalanceOf(contributor.address)
+          ).equal(11 + 25);
+        });
+      });
+
+      describe("lockedBalanceOf", async () => {
+        it("should be equal to owned tokens", async () => {
+          await mineEVMBlock();
+          expect(
+            await telediskoToken
+              .connect(contributor)
+              .lockedBalanceOf(contributor.address)
+          ).equal(1000 + 100);
+        });
+
+        it("should be equal to the owned tokend minus expired offers", async () => {
+          // Make offer `11` and `25` expire
+          await setEVMTimestamp(ts + WEEK + DAY * 3);
+          await mineEVMBlock();
+          expect(
+            await telediskoToken
+              .connect(contributor)
+              .lockedBalanceOf(contributor.address)
+          ).equal(1000 + 100 - 11 - 25);
+        });
       });
     });
   });
