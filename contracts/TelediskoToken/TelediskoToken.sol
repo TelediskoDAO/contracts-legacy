@@ -47,7 +47,7 @@ contract TelediskoToken is TelediskoTokenSnapshot, AccessControl {
         _mintVesting(to, amount);
     }
 
-    function transferLockedTokens(
+    function transferOfferedTokens(
         address from,
         address to,
         uint256 amount

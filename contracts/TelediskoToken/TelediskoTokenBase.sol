@@ -15,6 +15,16 @@ contract TelediskoTokenBase is ERC20 {
         uint256 amount;
     }
 
+    struct Offers {
+        uint128 start;
+        uint128 end;
+        mapping(uint128 => Offer) offer;
+    }
+
+    function _enqueue(Offers storage queue, Offer memory offer) internal {
+        queue.offer[queue.end++] = offer;
+    }
+
     event OfferCreated(address from, uint256 amount);
     event OfferDeleted(address from, uint256 amount);
     event LockedTokenTransferred(address from, address to, uint256 amount);
@@ -26,7 +36,7 @@ contract TelediskoTokenBase is ERC20 {
     // In theory they should be burned or added to a pool
     mapping(address => uint256) internal _balanceVesting;
     mapping(address => uint256) internal _balanceUnlocked;
-    mapping(address => Offer[]) internal _offers;
+    mapping(address => Offers) internal _offers;
     mapping(address => uint256) internal firstElementIndices;
 
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
@@ -50,67 +60,50 @@ contract TelediskoTokenBase is ERC20 {
                     _balanceUnlocked[account],
             "TelediskoToken: offered amount exceeds balance"
         );
-        _offers[account].push(Offer(block.timestamp, amount));
+
+        _enqueue(_offers[account], (Offer(block.timestamp, amount)));
 
         emit OfferCreated(_msgSender(), amount);
     }
 
     function _drainOffers(address account, uint256 amount) internal {
-        Offer[] storage offers = _offers[account];
-        uint256 length = offers.length;
+        Offers storage offers = _offers[account];
 
-        if (length == 0) {
-            return;
-        }
+        for (uint128 i = offers.start; i < offers.end; i++) {
+            Offer storage offer = offers.offer[i];
 
-        // Find the oldest offer
-        uint256 oldest = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
-        uint256 oldestIndex = 0;
-        for (uint256 i = 0; i < length; oldest++) {
-            if (offers[i].ts < oldest) {
-                oldest = offers[i].ts;
-                oldestIndex = i;
-            }
-        }
-
-        for (uint256 i = 0; i < length; i++) {
-            uint256 j = (i + oldestIndex) % length;
-            if (offers[j].ts > block.timestamp + OFFER_EXPIRATION) {
+            if (offer.ts > block.timestamp + OFFER_EXPIRATION) {
                 // If offer expired:
+
                 // 1. free the tokens
-                _balanceUnlocked[account] += offers[j].amount;
+                _balanceUnlocked[account] += offer.amount;
 
-                // 2. decrease the length of the array
-                length--;
-
-                // 3. move the last element to this index
-                offers[j] = offers[length];
-
-                // 4. truncate the array
-                assembly {
-                    sstore(offers.slot, length)
-                }
+                // 2. delete the expired offer
+                delete offers.offer[offers.start++];
             } else {
                 // If offer is active check if the amount is bigger than the
                 // current offer.
-                if (amount >= offers[j].amount) {
-                    amount -= offers[j].amount;
+                if (amount >= offer.amount) {
+                    amount -= offer.amount;
+
                     // 1. free the tokens (put them in unlocked balance, we will
                     // move them immediately after the method returns)
-                    _balanceUnlocked[account] += offers[j].amount;
+                    _balanceUnlocked[account] += offer.amount;
 
-                    // 2. decrease the length of the array
-                    length--;
+                    // 2. remove the offer
+                    delete offers.offer[offers.start++];
 
-                    // 3. move the last element to this index
-                    offers[j] = offers[length];
-
-                    // 4. truncate the array
-                    assembly {
-                        sstore(offers.slot, length)
-                    }
+                    // If the amount is smaller than the offer amount, then
                 } else {
-                    offers[j].amount -= amount;
+                    // 1. free the tokens (put them in unlocked balance, we will
+                    // move them immediately after the method returns)
+                    _balanceUnlocked[account] += amount;
+
+                    // 2. decrease the amount of offered tokens
+                    offer.amount -= amount;
+
+                    // 3. we've exhausted the amount, set it to zero and go back
+                    // to the calling function
                     amount = 0;
                 }
             }
@@ -168,7 +161,7 @@ contract TelediskoTokenBase is ERC20 {
         }
     }
 
-    function _transferLockedTokens(
+    function _transferOfferedTokens(
         address from,
         address to,
         uint256 amount
@@ -205,6 +198,28 @@ contract TelediskoTokenBase is ERC20 {
         _createOffer(msg.sender, amount);
     }
 
+    function _calculateOffersOf(address account)
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        Offers storage offers = _offers[account];
+
+        uint256 unlocked = _balanceUnlocked[account];
+        uint256 offered;
+
+        for (uint128 i = offers.start; i < offers.end; i++) {
+            Offer storage offer = offers.offer[i];
+
+            if (offer.ts > block.timestamp + OFFER_EXPIRATION) {
+                unlocked += offer.amount;
+            } else {
+                offered += offer.amount;
+            }
+        }
+        return (offered, unlocked);
+    }
+
     // Tokens that are still in the vesting phase
     function balanceVestingOf(address account) public view returns (uint256) {
         return _balanceVesting[account];
@@ -218,7 +233,8 @@ contract TelediskoTokenBase is ERC20 {
                 account
             )
         ) {
-            return balanceOf(account) - _balanceUnlocked[account];
+            (uint256 offered, uint256 unlocked) = _calculateOffersOf(account);
+            return balanceOf(account) - unlocked + offered;
         }
 
         return 0;
@@ -226,23 +242,21 @@ contract TelediskoTokenBase is ERC20 {
 
     // Tokens owned by a contributor that are offered to other contributors
     function balanceOfferedOf(address account) public view returns (uint256) {
-        Offer[] memory offers = _offers[account];
-        uint256 length = offers.length;
-
-        uint256 totalOffered = 0;
-
-        for (
-            uint256 firstIndex = firstElementIndices[account];
-            firstIndex < length;
-            firstIndex++
+        if (
+            _shareholderRegistry.isAtLeast(
+                _shareholderRegistry.CONTRIBUTOR_STATUS(),
+                account
+            )
         ) {
-            totalOffered += offers[firstIndex].amount;
+            (uint256 offered, ) = _calculateOffersOf(account);
+            return offered;
         }
 
-        return totalOffered;
+        return 0;
     }
 
-    // Tokens that has been offered but not bought by any other contributor.
+    // Tokens that has been offered but not bought by any other contributor
+    // within the allowed timeframe.
     function balanceUnlockedOf(address account) public view returns (uint256) {
         if (
             _shareholderRegistry.isAtLeast(
@@ -250,7 +264,8 @@ contract TelediskoTokenBase is ERC20 {
                 account
             )
         ) {
-            return _balanceUnlocked[account];
+            (, uint256 unlocked) = _calculateOffersOf(account);
+            return unlocked;
         } else {
             return balanceOf(account);
         }
