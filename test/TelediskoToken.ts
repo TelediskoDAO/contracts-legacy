@@ -219,8 +219,8 @@ describe("TelediskoToken", () => {
         // - An offer made on `ts + 4 days`
         await telediskoToken.mintVesting(contributor.address, 1000);
         await telediskoToken.mint(contributor.address, 100);
-        ts = await getEVMTimestamp();
         await telediskoToken.connect(contributor).createOffer(11);
+        ts = await getEVMTimestamp();
 
         // Move to the next day and make another offer
         await setEVMTimestamp(ts + DAY * 2);
@@ -256,7 +256,7 @@ describe("TelediskoToken", () => {
           )
         )
           .emit(telediskoToken, "OfferExpired")
-          .withArgs(contributor.address, 11)
+          .withArgs(contributor.address, 11, ts)
           .emit(telediskoToken, "OfferMatched")
           .withArgs(contributor.address, contributor2.address, 25, 0)
           .emit(telediskoToken, "Transfer")
@@ -317,8 +317,8 @@ describe("TelediskoToken", () => {
         // - An offer made on `ts + 4 days`
         await telediskoToken.mintVesting(contributor.address, 1000);
         await telediskoToken.mint(contributor.address, 100);
-        ts = await getEVMTimestamp();
         await telediskoToken.connect(contributor).createOffer(11);
+        ts = await getEVMTimestamp();
 
         // Move to the next day and make another offer
         await setEVMTimestamp(ts + DAY * 2);
@@ -336,7 +336,7 @@ describe("TelediskoToken", () => {
           telediskoToken.connect(contributor).transfer(contributor2.address, 11)
         )
           .emit(telediskoToken, "OfferExpired")
-          .withArgs(contributor.address, 11)
+          .withArgs(contributor.address, 11, ts)
           .emit(telediskoToken, "Transfer")
           .withArgs(contributor.address, contributor2.address, 11);
       });

@@ -21,12 +21,12 @@ contract TelediskoTokenBase is ERC20 {
         mapping(uint128 => Offer) offer;
     }
 
-    function _enqueue(Offers storage queue, Offer memory offer) internal {
-        queue.offer[queue.end++] = offer;
+    function _enqueue(Offers storage offers, Offer memory offer) internal {
+        offers.offer[offers.end++] = offer;
     }
 
     event OfferCreated(address from, uint256 amount);
-    event OfferExpired(address from, uint256 amount);
+    event OfferExpired(address from, uint256 amount, uint256 ts);
     event OfferMatched(address from, address to, uint256 amount, uint256 left);
     event VestingSet(address to, uint256 amount);
 
@@ -51,7 +51,8 @@ contract TelediskoTokenBase is ERC20 {
     }
 
     function _createOffer(address account, uint256 amount) internal {
-        // Vesting tokens cannot be offered because they need to be vested before they can be transferred
+        // Vesting tokens cannot be offered because they need to be vested
+        // before they can be transferred
         require(
             amount <=
                 balanceOf(account) -
@@ -60,7 +61,7 @@ contract TelediskoTokenBase is ERC20 {
             "TelediskoToken: offered amount exceeds balance"
         );
 
-        _enqueue(_offers[account], (Offer(block.timestamp, amount)));
+        _enqueue(_offers[account], Offer(block.timestamp, amount));
 
         emit OfferCreated(_msgSender(), amount);
     }
@@ -82,12 +83,14 @@ contract TelediskoTokenBase is ERC20 {
                 _unlockedBalance[from] += offer.amount;
 
                 // 2. delete the expired offer
-                emit OfferExpired(from, offer.amount);
+                emit OfferExpired(from, offer.amount, offer.ts);
                 delete offers.offer[offers.start++];
             } else {
                 // If offer is active check if the amount is bigger than the
                 // current offer.
-                if (amount >= offer.amount) {
+                if (amount == 0) {
+                    break;
+                } else if (amount >= offer.amount) {
                     amount -= offer.amount;
 
                     // 1. free the tokens (put them in unlocked balance, we will
@@ -111,17 +114,11 @@ contract TelediskoTokenBase is ERC20 {
                     // 3. we've exhausted the amount, set it to zero and go back
                     // to the calling function
                     amount = 0;
-                    break;
                 }
             }
         }
 
-        if (amount == 0) {
-            // We made it
-            return;
-        }
-
-        require(false, "TelediskoToken: amount exceeds offer");
+        require(amount == 0, "TelediskoToken: amount exceeds offer");
     }
 
     function _beforeTokenTransfer(
@@ -202,7 +199,7 @@ contract TelediskoTokenBase is ERC20 {
             ),
             "TelediskoToken: not a contributor"
         );
-        _createOffer(msg.sender, amount);
+        _createOffer(_msgSender(), amount);
     }
 
     function _calculateOffersOf(address account)
