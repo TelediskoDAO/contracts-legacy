@@ -100,14 +100,8 @@ describe("Upgrade", () => {
     ) {
       await voting.connect(user1).delegate(user2.address);
     }
-    // Mint token to a shareholder
-    // Promote them to contributor
-    // Self-delegate
-    // Give some tokens
-    // Create and approve resolution
-    // Contributor votes resolution (yes)
-    // Resolution passes
-    it("change notice and voting period of a resolution type", async () => {
+
+    it("can change notice and voting period of a resolution type", async () => {
       await _prepareForVoting(user1, 42);
       const resolutionId = await _prepareResolution(6);
       const resolutionObject = await resolution.resolutions(resolutionId);
