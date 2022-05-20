@@ -63,13 +63,6 @@ describe("Upgrade", () => {
       await _mintTokens(user, tokens);
     }
 
-    async function _makeVotable(resolutionId: number) {
-      const resolutionObject = await resolution.resolutions(resolutionId);
-      const votingTimestamp =
-        resolutionObject.approveTimestamp.toNumber() + DAY * 14;
-      await setEVMTimestamp(votingTimestamp);
-    }
-
     async function _prepareResolution(type: number) {
       currentResolution++;
       await resolution.connect(user1).createResolution("Qxtest", type, false);
@@ -78,27 +71,6 @@ describe("Upgrade", () => {
         .approveResolution(currentResolution);
 
       return currentResolution;
-    }
-
-    async function _endResolution() {
-      const votingEndTimestamp = (await getEVMTimestamp()) + DAY * 7;
-      await setEVMTimestamp(votingEndTimestamp);
-      await mineEVMBlock();
-    }
-
-    async function _vote(
-      user: SignerWithAddress,
-      isYes: boolean,
-      resolutionId: number
-    ) {
-      await resolution.connect(user).vote(resolutionId, isYes);
-    }
-
-    async function _delegate(
-      user1: SignerWithAddress,
-      user2: SignerWithAddress
-    ) {
-      await voting.connect(user1).delegate(user2.address);
     }
 
     it("can change notice and voting period of a resolution type", async () => {
