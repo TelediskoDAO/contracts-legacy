@@ -9,9 +9,14 @@ import "../ShareholderRegistry/IShareholderRegistry.sol";
 import "../TelediskoToken/ITelediskoToken.sol";
 import "../Voting/IVoting.sol";
 import "../extensions/Roles.sol";
+import "hardhat/console.sol";
 
 contract ResolutionManager is Initializable, Context, AccessControl {
-    uint256 private _currentResolutionId;
+    uint256 internal _currentResolutionId;
+
+    IShareholderRegistry internal _shareholderRegistry;
+    ITelediskoToken internal _telediskoToken;
+    IVoting internal _voting;
 
     event ResolutionCreated(address indexed from, uint256 indexed resolutionId);
     event ResolutionUpdated(address indexed from, uint256 indexed resolutionId);
@@ -34,10 +39,6 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         uint256 indexed resolutionId,
         uint256 amount
     );
-
-    IShareholderRegistry private _shareholderRegistry;
-    ITelediskoToken private _telediskoToken;
-    IVoting private _voting;
 
     // TODO: make resolution type indices more explicit
     struct ResolutionType {
@@ -64,11 +65,11 @@ contract ResolutionManager is Initializable, Context, AccessControl {
 
     mapping(uint256 => Resolution) public resolutions;
 
-    function initialize(        
+    function initialize(
         IShareholderRegistry shareholderRegistry,
         ITelediskoToken telediskoToken,
-        IVoting voting) public initializer {
-        
+        IVoting voting
+    ) public initializer {
         _shareholderRegistry = shareholderRegistry;
         _telediskoToken = telediskoToken;
         _voting = voting;
