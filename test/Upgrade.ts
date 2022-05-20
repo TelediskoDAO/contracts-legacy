@@ -11,7 +11,6 @@ import {
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
-import { roles } from "./utils/roles";
 import { deployDAO } from "./utils/deploy";
 
 chai.use(solidity);
@@ -19,7 +18,6 @@ chai.use(chaiAsPromised);
 const { expect } = chai;
 
 const DAY = 60 * 60 * 24;
-const AddressZero = ethers.constants.AddressZero;
 
 describe("Upgrade", () => {
   let voting: Voting;
