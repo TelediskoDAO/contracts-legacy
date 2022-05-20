@@ -106,8 +106,6 @@ describe("Upgrade", () => {
       );
       await resolutionV2Contract.deployed();
       await resolutionV2Contract.reinitialize();
-      console.log(resolution.address);
-      console.log(resolutionV2Contract.address);
 
       const newResolutionId = await _prepareResolution(6);
       const newResolutionObject = await resolutionV2Contract.resolutions(
