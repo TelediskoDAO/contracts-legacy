@@ -401,6 +401,7 @@ describe("Integration", () => {
     // Another resolution is created and approved
     // A votes yes, B votes no. Resolutions doesn't pass
     // After 7 days, B transfers 1 token to an external address
+    // The external address transfers 1 token back to A
     // Resolution is created
     // A votes yes, B votes no. Resolution passes
     it("token economics + voting", async () => {
