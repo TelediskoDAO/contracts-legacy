@@ -463,5 +463,122 @@ describe("Integration", () => {
       );
       expect(resolution3Result).equal(true);
     });
+
+    // Mint 50 tokens to A
+    // Mint 100 tokens to B
+    // Mint 1 token to C
+    // B offers 60 tokens
+    // C buys 10 from B
+    // A buys 40 tokens from B
+    // C offers 5 tokens
+    // A offers 10 tokens
+    // B buys 10 tokens from A
+    // B offers 10 tokens, 2 days later
+    // C buys 15 tokens from B
+    // C transfers 10 tokens to A, fails
+    // B first offers expires
+    // C offers expires
+    // B transfers 5 tokens to C, fails
+    // Check
+    // B last offer expires
+    // B transfers 5 tokens to C
+    // Check
+
+    // A:
+    // - locked tokens: 80
+    // - balance: 80
+    // - offered tokens: 0
+    // - unlocked tokens: 0
+    // B:
+    // - locked tokens: 45
+    // - balance: 45
+    // - offered tokens: 5
+    // - unlocekd tokens: 0
+    // C:
+    // - locked tokens: 21
+    // - balance: 26
+    // - offered tokens: 0
+    // - unlocked tokens: 5
+
+    it("complex tekenomics", async () => {
+      await _prepareForVoting(user1, 50);
+      await _prepareForVoting(user2, 100);
+      await _prepareForVoting(user3, 1);
+
+      await token.connect(user2).createOffer(60);
+      await token.matchOffer(user2.address, user3.address, 10);
+      await token.matchOffer(user2.address, user1.address, 40);
+      await token.connect(user3).createOffer(5);
+      await token.connect(user1).createOffer(10);
+      await token.matchOffer(user1.address, user2.address, 10);
+
+      // Two days pass
+      let offerExpires = (await getEVMTimestamp()) + 2 * DAY;
+      await setEVMTimestamp(offerExpires);
+      await mineEVMBlock();
+
+      await token.connect(user2).createOffer(10);
+      await token.matchOffer(user2.address, user3.address, 15);
+
+      await expect(
+        token.connect(user3).transfer(user1.address, 10)
+      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+
+      // 5 days pass (first offer expires)
+      offerExpires = (await getEVMTimestamp()) + 5 * DAY;
+      await setEVMTimestamp(offerExpires);
+      await mineEVMBlock();
+
+      // Still fails, because first offers was already drained
+      await expect(
+        token.connect(user2).transfer(user3.address, 5)
+      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+
+      expect((await token.lockedBalanceOf(user1.address)).toNumber()).equal(80);
+      expect((await token.balanceOf(user1.address)).toNumber()).equal(80);
+      expect((await token.offeredBalanceOf(user1.address)).toNumber()).equal(0);
+      expect((await token.unlockedBalanceOf(user1.address)).toNumber()).equal(
+        0
+      );
+
+      expect((await token.lockedBalanceOf(user2.address)).toNumber()).equal(45);
+      expect((await token.balanceOf(user2.address)).toNumber()).equal(45);
+      expect((await token.offeredBalanceOf(user2.address)).toNumber()).equal(5);
+      expect((await token.unlockedBalanceOf(user2.address)).toNumber()).equal(
+        0
+      );
+
+      expect((await token.lockedBalanceOf(user3.address)).toNumber()).equal(21);
+      expect((await token.balanceOf(user3.address)).toNumber()).equal(26);
+      expect((await token.offeredBalanceOf(user3.address)).toNumber()).equal(0);
+      expect((await token.unlockedBalanceOf(user3.address)).toNumber()).equal(
+        5
+      );
+
+      // 3 days pass (last user2 offer expires)
+      offerExpires = (await getEVMTimestamp()) + 3 * DAY;
+      await setEVMTimestamp(offerExpires);
+      await mineEVMBlock();
+
+      // first tries wrong amount
+      await expect(
+        token.connect(user2).transfer(user3.address, 10)
+      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+      token.connect(user2).transfer(user3.address, 5);
+
+      expect((await token.lockedBalanceOf(user2.address)).toNumber()).equal(40);
+      expect((await token.balanceOf(user2.address)).toNumber()).equal(40);
+      expect((await token.offeredBalanceOf(user2.address)).toNumber()).equal(0);
+      expect((await token.unlockedBalanceOf(user2.address)).toNumber()).equal(
+        0
+      );
+
+      expect((await token.lockedBalanceOf(user3.address)).toNumber()).equal(26);
+      expect((await token.balanceOf(user3.address)).toNumber()).equal(31);
+      expect((await token.offeredBalanceOf(user3.address)).toNumber()).equal(0);
+      expect((await token.unlockedBalanceOf(user3.address)).toNumber()).equal(
+        5
+      );
+    });
   });
 });
