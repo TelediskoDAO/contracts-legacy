@@ -39,4 +39,4 @@ The gas report script will generate 8 reports:
 - the min and max of the average of 2022 for the given network
 - the min and max of the median of 2022 for the given network
   Execute:
-  `./generate_gas <reports folder or empy>`
+  `./generate_gas_report.sh <reports folder or empy>`
