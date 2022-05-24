@@ -406,7 +406,7 @@ describe("Integration", () => {
     // After 7 days, B transfers 1 token to an external address
     // Resolution is created
     // A votes yes, B votes no. Resolution passes
-    it("token economics", async () => {
+    it("token economics + voting", async () => {
       await _prepareForVoting(user1, 49);
       await _prepareForVoting(user2, 51);
 
@@ -500,7 +500,7 @@ describe("Integration", () => {
     // - offered tokens: 0
     // - unlocked tokens: 5
 
-    it("complex tekenomics", async () => {
+    it("complex tokenomics", async () => {
       await _prepareForVoting(user1, 50);
       await _prepareForVoting(user2, 100);
       await _prepareForVoting(user3, 1);
