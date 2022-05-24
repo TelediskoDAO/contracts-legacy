@@ -483,23 +483,6 @@ describe("Integration", () => {
     // B last offer expires
     // B transfers 5 tokens to C
     // Check
-
-    // A:
-    // - locked tokens: 80
-    // - balance: 80
-    // - offered tokens: 0
-    // - unlocked tokens: 0
-    // B:
-    // - locked tokens: 45
-    // - balance: 45
-    // - offered tokens: 5
-    // - unlocekd tokens: 0
-    // C:
-    // - locked tokens: 21
-    // - balance: 26
-    // - offered tokens: 0
-    // - unlocked tokens: 5
-
     it("complex tokenomics", async () => {
       await _prepareForVoting(user1, 50);
       await _prepareForVoting(user2, 100);
