@@ -18,13 +18,11 @@ chai.use(chaiAsPromised);
 const { expect } = chai;
 
 const DAY = 60 * 60 * 24;
-const AddressZero = ethers.constants.AddressZero;
 
 describe("Integration", () => {
   let voting: Voting;
   let token: TelediskoToken;
   let resolution: ResolutionManager;
-  let managingBoardStatus: string;
   let contributorStatus: string;
   let investorStatus: string;
   let shareholderRegistry: ShareholderRegistry;
@@ -42,7 +40,6 @@ describe("Integration", () => {
       managingBoard
     );
 
-    managingBoardStatus = await shareholderRegistry.MANAGING_BOARD_STATUS();
     contributorStatus = await shareholderRegistry.CONTRIBUTOR_STATUS();
     investorStatus = await shareholderRegistry.INVESTOR_STATUS();
   });
