@@ -13,13 +13,13 @@ MED_MIN_MATIC=37
 MED_MAX_MATIC=71
 
 echo "generating ETH reports..."
-REPORT_GAS=true GAS_PRICE=$AVG_MIN_ETH GASREPORT_FILE=$REPORT_FOLDER/eth_avg_min.txt npx hardhat test test/Integration.ts > /dev/null
-REPORT_GAS=true GAS_PRICE=$AVG_MAX_ETH GASREPORT_FILE=$REPORT_FOLDER/eth_avg_max.txt npx hardhat test test/Integration.ts > /dev/null
-REPORT_GAS=true GAS_PRICE=$MED_MIN_ETH GASREPORT_FILE=$REPORT_FOLDER/eth_med_min.txt npx hardhat test test/Integration.ts > /dev/null
-REPORT_GAS=true GAS_PRICE=$MED_MAX_ETH GASREPORT_FILE=$REPORT_FOLDER/eth_med_max.txt npx hardhat test test/Integration.ts > /dev/null
+REPORT_GAS=true GAS_PRICE=$AVG_MIN_ETH TOKEN=ETH GASREPORT_FILE=$REPORT_FOLDER/eth_avg_min.txt npx hardhat test test/Integration.ts > /dev/null
+REPORT_GAS=true GAS_PRICE=$AVG_MAX_ETH TOKEN=ETH GASREPORT_FILE=$REPORT_FOLDER/eth_avg_max.txt npx hardhat test test/Integration.ts > /dev/null
+REPORT_GAS=true GAS_PRICE=$MED_MIN_ETH TOKEN=ETH GASREPORT_FILE=$REPORT_FOLDER/eth_med_min.txt npx hardhat test test/Integration.ts > /dev/null
+REPORT_GAS=true GAS_PRICE=$MED_MAX_ETH TOKEN=ETH GASREPORT_FILE=$REPORT_FOLDER/eth_med_max.txt npx hardhat test test/Integration.ts > /dev/null
 
 echo "generating MATIC reports..."
-REPORT_GAS=true GAS_PRICE=$AVG_MIN_MATIC GASREPORT_FILE=$REPORT_FOLDER/matic_avg_min.txt npx hardhat test test/Integration.ts > /dev/null
-REPORT_GAS=true GAS_PRICE=$AVG_MAX_MATIC GASREPORT_FILE=$REPORT_FOLDER/matic_avg_max.txt npx hardhat test test/Integration.ts > /dev/null
-REPORT_GAS=true GAS_PRICE=$MED_MIN_MATIC GASREPORT_FILE=$REPORT_FOLDER/matic_med_min.txt npx hardhat test test/Integration.ts > /dev/null
-REPORT_GAS=true GAS_PRICE=$MED_MAX_MATIC GASREPORT_FILE=$REPORT_FOLDER/matic_med_max.txt npx hardhat test test/Integration.ts > /dev/null
+REPORT_GAS=true GAS_PRICE=$AVG_MIN_MATIC TOKEN=MATIC GASREPORT_FILE=$REPORT_FOLDER/matic_avg_min.txt npx hardhat test test/Integration.ts > /dev/null
+REPORT_GAS=true GAS_PRICE=$AVG_MAX_MATIC TOKEN=MATIC GASREPORT_FILE=$REPORT_FOLDER/matic_avg_max.txt npx hardhat test test/Integration.ts > /dev/null
+REPORT_GAS=true GAS_PRICE=$MED_MIN_MATIC TOKEN=MATIC GASREPORT_FILE=$REPORT_FOLDER/matic_med_min.txt npx hardhat test test/Integration.ts > /dev/null
+REPORT_GAS=true GAS_PRICE=$MED_MAX_MATIC TOKEN=MATIC GASREPORT_FILE=$REPORT_FOLDER/matic_med_max.txt npx hardhat test test/Integration.ts > /dev/null
