@@ -65,14 +65,18 @@ describe("Integration", () => {
 
     async function _makeVotable(resolutionId: number) {
       const resolutionObject = await resolution.resolutions(resolutionId);
+      const resolutionType = await resolution.resolutionTypes(
+        resolutionObject.resolutionTypeId
+      );
       const votingTimestamp =
-        resolutionObject.approveTimestamp.toNumber() + DAY * 14;
+        resolutionObject.approveTimestamp.toNumber() +
+        resolutionType.noticePeriod.toNumber();
       await setEVMTimestamp(votingTimestamp);
     }
 
-    async function _prepareResolution() {
+    async function _prepareResolution(type: number = 0) {
       currentResolution++;
-      await resolution.connect(user1).createResolution("Qxtest", 0, false);
+      await resolution.connect(user1).createResolution("Qxtest", type, false);
       await resolution
         .connect(managingBoard)
         .approveResolution(currentResolution);
@@ -388,6 +392,76 @@ describe("Integration", () => {
       expect(resolution2Result).equal(false);
       expect(resolution3Result).equal(true);
       expect(resolution4Result).equal(true);
+    });
+
+    // Mint 49 tokens to contributor A
+    // Mint 51 tokens to contributor B
+    // Resolution is created
+    // A votes yes, B votes no. Resolution doesn't pass
+    // Contributor B tries to transfer 2 tokens, fails
+    // Contributor B offers 2 tokens
+    // 1 token is bought by contributor A
+    // Another resolution is created and approved
+    // A votes yes, B votes no. Resolutions doesn't pass
+    // After 7 days, B transfers 1 token to an external address
+    // Resolution is created
+    // A votes yes, B votes no. Resolution passes
+    it("token economics", async () => {
+      await _prepareForVoting(user1, 49);
+      await _prepareForVoting(user2, 51);
+
+      const resolutionId1 = await _prepareResolution(6);
+      await _makeVotable(resolutionId1);
+      await _vote(user1, true, resolutionId1);
+      await _vote(user2, false, resolutionId1);
+
+      const resolution1Result = await resolution.getResolutionResult(
+        resolutionId1
+      );
+      expect(resolution1Result).equal(false);
+
+      await expect(
+        token.connect(user2).transfer(user3.address, 2)
+      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+
+      await token.connect(user2).createOffer(2);
+      await token.matchOffer(user2.address, user1.address, 1);
+
+      const resolutionId2 = await _prepareResolution(6);
+      await _makeVotable(resolutionId2);
+      await _vote(user1, true, resolutionId2);
+      await _vote(user2, false, resolutionId2);
+
+      const resolution2Result = await resolution.getResolutionResult(
+        resolutionId2
+      );
+      expect(resolution2Result).equal(false);
+
+      // Let 7 days pass, so to unlock tokens from user2
+      const expirationSeconds = await token.OFFER_EXPIRATION();
+      const offerExpires =
+        (await getEVMTimestamp()) + expirationSeconds.toNumber();
+      await setEVMTimestamp(offerExpires);
+      await mineEVMBlock();
+
+      // Tries first to transfer 2 tokens (becuase the user forgot that 1 was sold to user 1)
+      await expect(
+        token.connect(user2).transfer(user3.address, 2)
+      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+      // Tries now to transfer the right amount
+      await token.connect(user2).transfer(user3.address, 1);
+      // The external user transfers the token back to user 1, because they can
+      await token.connect(user3).transfer(user1.address, 1);
+
+      const resolutionId3 = await _prepareResolution(6);
+      await _makeVotable(resolutionId3);
+      await _vote(user1, true, resolutionId3);
+      await _vote(user2, false, resolutionId3);
+
+      const resolution3Result = await resolution.getResolutionResult(
+        resolutionId3
+      );
+      expect(resolution3Result).equal(true);
     });
   });
 });
