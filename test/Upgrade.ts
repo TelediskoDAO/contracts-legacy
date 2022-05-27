@@ -9,6 +9,7 @@ import {
   ResolutionManager,
   ResolutionManagerV2Mock__factory,
   TelediskoTokenV2Mock__factory,
+  NewTelediskoTokenMock__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
@@ -165,6 +166,26 @@ describe("Upgrade", () => {
       await expect(
         token.connect(user2).transfer(user1.address, 1)
       ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+    });
+
+    it("should change events", async () => {
+      await expect(token.mintVesting(user1.address, 31))
+        .emit(token, "VestingSet")
+        .withArgs(user1.address, 31);
+
+      const NewTelediskoTokenMockFactory = (await ethers.getContractFactory(
+        "NewTelediskoTokenMock"
+      )) as NewTelediskoTokenMock__factory;
+
+      const tokenV2Contract = await upgrades.upgradeProxy(
+        token.address,
+        NewTelediskoTokenMockFactory
+      );
+      await tokenV2Contract.deployed();
+
+      await expect(token.mintVesting(user1.address, 31))
+        .emit(token, "VestingSet")
+        .withArgs(deployer.address, user1.address, 31);
     });
   });
 });
