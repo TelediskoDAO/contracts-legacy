@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "../Voting/IVoting.sol";
+import "hardhat/console.sol";
 
 contract ShareholderRegistryBase is ERC20Upgradeable {
     bytes32 public SHAREHOLDER_STATUS;
@@ -67,7 +68,7 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
         uint256 recipientLength = recipients.length;
 
         for (uint256 i = 0; i < recipientLength; ) {
-            transferFrom(address(this), recipients[i], 1);
+            _transfer(address(this), recipients[i], 1);
         }
     }
 
@@ -120,7 +121,9 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
         super._beforeTokenTransfer(from, to, amount);
 
         require(
-            balanceOf(to) > 0 && to != address(this),
+            (balanceOf(to) == 0 && amount == 1 ether) ||
+                (to == address(this)) ||
+                (to == address(0)),
             "Only the DAO can have more than 1 share"
         );
     }
