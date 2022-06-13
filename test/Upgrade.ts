@@ -184,7 +184,7 @@ describe("Upgrade", () => {
       await tokenV2Contract.deployed();
 
       await expect(token.mintVesting(user1.address, 31))
-        .emit(token, "VestingSet")
+        .emit(tokenV2Contract, "VestingSet2")
         .withArgs(deployer.address, user1.address, 31);
     });
   });
