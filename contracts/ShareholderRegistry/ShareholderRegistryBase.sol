@@ -63,6 +63,14 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
         return _isAtLeast(balanceOf(account), _statuses[account], status);
     }
 
+    function _transferFromDAOBatch(address[] memory recipients) internal {
+        uint256 recipientLength = recipients.length;
+
+        for (uint256 i = 0; i < recipientLength; ) {
+            transferFrom(address(this), recipients[i], 1);
+        }
+    }
+
     function _isAtLeast(
         uint256 balance,
         bytes32 accountStatus,
@@ -102,6 +110,19 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
         ) {
             _voting.afterAddContributor(account);
         }
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, amount);
+
+        require(
+            balanceOf(to) > 0 && to != address(this),
+            "Only the DAO can have more than 1 share"
+        );
     }
 
     function _afterTokenTransfer(
