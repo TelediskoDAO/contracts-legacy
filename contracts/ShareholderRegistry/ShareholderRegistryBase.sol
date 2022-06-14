@@ -120,6 +120,7 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, amount);
 
+        require(amount == 1 ether * (amount / 1 ether), "No fractional tokens");
         require(
             (balanceOf(to) == 0 && amount == 1 ether) ||
                 (to == address(this)) ||

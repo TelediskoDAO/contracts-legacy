@@ -474,5 +474,22 @@ describe("Shareholder Registry", () => {
         .to.emit(registry, "Transfer")
         .withArgs(AddressZero, registry.address, parseEther("1"));
     });
+
+    it("should allow burning as many tokens as desired", async () => {
+      await registry.mint(registry.address, parseEther("10"));
+      await expect(registry.burn(registry.address, parseEther("5")))
+        .to.emit(registry, "Transfer")
+        .withArgs(registry.address, AddressZero, parseEther("5"));
+    });
+
+    it("should not allow to transfer factional tokens", async () => {
+      await expect(
+        registry.mint(registry.address, parseEther("0.1"))
+      ).revertedWith("No fractional tokens");
+
+      await expect(
+        registry.mint(registry.address, parseEther("2.5"))
+      ).revertedWith("No fractional tokens");
+    });
   });
 });
