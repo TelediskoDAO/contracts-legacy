@@ -462,13 +462,13 @@ describe("Shareholder Registry", () => {
       );
     });
 
-    it("should allow the DAO to receiving more than 1 share", async () => {
+    it("should allow the DAO to receive more than 1 share", async () => {
       await expect(registry.mint(registry.address, parseEther("10")))
         .to.emit(registry, "Transfer")
         .withArgs(AddressZero, registry.address, parseEther("10"));
     });
 
-    it("should allow the DAO to receiving 1 share after they already got one", async () => {
+    it("should allow the DAO to receive 1 share after they already got one", async () => {
       await registry.mint(registry.address, parseEther("1"));
       await expect(registry.mint(registry.address, parseEther("1")))
         .to.emit(registry, "Transfer")
