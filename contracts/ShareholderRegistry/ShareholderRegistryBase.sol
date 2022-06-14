@@ -7,7 +7,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "../Voting/IVoting.sol";
-import "hardhat/console.sol";
 
 contract ShareholderRegistryBase is ERC20Upgradeable {
     bytes32 public SHAREHOLDER_STATUS;
@@ -68,7 +67,11 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
         uint256 recipientLength = recipients.length;
 
         for (uint256 i = 0; i < recipientLength; ) {
-            _transfer(address(this), recipients[i], 1);
+            _transfer(address(this), recipients[i], 1 ether);
+
+            unchecked {
+                i++;
+            }
         }
     }
 

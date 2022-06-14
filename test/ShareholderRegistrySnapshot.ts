@@ -448,7 +448,27 @@ describe("Shareholder Registry", () => {
     });
   });
 
-  describe("tokenomics", async () => {
+  describe("transferFromDAOBatch", async () => {
+    it("allow transfering DAO shares to multiple addresses", async () => {
+      await registry.mint(registry.address, parseEther("20"));
+
+      await expect(
+        registry.transferFromDAOBatch([
+          alice.address,
+          bob.address,
+          managingBoard.address,
+        ])
+      );
+
+      expect(await registry.balanceOf(alice.address)).equal(parseEther("1"));
+      expect(await registry.balanceOf(bob.address)).equal(parseEther("1"));
+      expect(await registry.balanceOf(managingBoard.address)).equal(
+        parseEther("1")
+      );
+    });
+  });
+
+  describe("transfer", async () => {
     it("should prevent non-DAO addresses from receiving more than 1 share", async () => {
       await expect(registry.mint(alice.address, parseEther("2"))).revertedWith(
         "Only the DAO can have more than 1 share"
@@ -463,23 +483,25 @@ describe("Shareholder Registry", () => {
     });
 
     it("should allow the DAO to receive more than 1 share", async () => {
-      await expect(registry.mint(registry.address, parseEther("10")))
-        .to.emit(registry, "Transfer")
-        .withArgs(AddressZero, registry.address, parseEther("10"));
+      await registry.mint(registry.address, parseEther("10"));
+
+      expect(await registry.balanceOf(registry.address)).equal(
+        parseEther("10")
+      );
     });
 
     it("should allow the DAO to receive 1 share after they already got one", async () => {
       await registry.mint(registry.address, parseEther("1"));
-      await expect(registry.mint(registry.address, parseEther("1")))
-        .to.emit(registry, "Transfer")
-        .withArgs(AddressZero, registry.address, parseEther("1"));
+      await registry.mint(registry.address, parseEther("1"));
+
+      expect(await registry.balanceOf(registry.address)).equal(parseEther("2"));
     });
 
     it("should allow burning as many tokens as desired", async () => {
       await registry.mint(registry.address, parseEther("10"));
-      await expect(registry.burn(registry.address, parseEther("5")))
-        .to.emit(registry, "Transfer")
-        .withArgs(registry.address, AddressZero, parseEther("5"));
+      await registry.burn(registry.address, parseEther("4"));
+
+      expect(await registry.balanceOf(registry.address)).equal(parseEther("6"));
     });
 
     it("should not allow to transfer factional tokens", async () => {
