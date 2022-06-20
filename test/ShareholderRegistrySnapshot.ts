@@ -75,7 +75,7 @@ describe("Shareholder Registry", () => {
     it("should fail if address is not a shareholder set the given type for an address", async () => {
       await expect(
         registry.setStatus(CONTRIBUTOR_STATUS, alice.address)
-      ).revertedWith("Shareholder: address has no tokens");
+      ).revertedWith("ShareholderRegistry: address has no tokens");
     });
 
     it("should be callable only by a operator", async () => {
@@ -471,14 +471,14 @@ describe("Shareholder Registry", () => {
   describe("transfer", async () => {
     it("should prevent non-DAO addresses from receiving more than 1 share", async () => {
       await expect(registry.mint(alice.address, parseEther("2"))).revertedWith(
-        "Only the DAO can have more than 1 share"
+        "ShareholderRegistry: Only the DAO can have more than 1 share"
       );
     });
 
     it("should prevent non-DAO addresses from receiving 1 share after they already got one", async () => {
       await registry.mint(alice.address, parseEther("1"));
       await expect(registry.mint(alice.address, parseEther("1"))).revertedWith(
-        "Only the DAO can have more than 1 share"
+        "ShareholderRegistry: Only the DAO can have more than 1 share"
       );
     });
 
