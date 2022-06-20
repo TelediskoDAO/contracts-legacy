@@ -59,7 +59,7 @@ contract ShareholderRegistry is
 
     function burn(address account, uint256 amount)
         external
-        onlyRole(Roles.RESOLUTION_ROLE)
+        onlyRole(Roles.OPERATOR_ROLE)
     {
         _burn(account, amount);
     }

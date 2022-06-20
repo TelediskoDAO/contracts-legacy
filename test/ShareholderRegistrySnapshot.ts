@@ -306,7 +306,7 @@ describe("Shareholder Registry", () => {
           registry.connect(bob).burn(registry.address, 4)
         ).revertedWith(
           `AccessControl: account ${bob.address.toLowerCase()} ` +
-            `is missing role ${RESOLUTION_ROLE}`
+            `is missing role ${OPERATOR_ROLE}`
         );
       });
 
