@@ -42,7 +42,7 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
     function _setStatus(bytes32 status, address account) internal virtual {
         require(
             status == 0 || isAtLeast(SHAREHOLDER_STATUS, account),
-            "Shareholder: address has no tokens"
+            "ShareholderRegistry: address has no tokens"
         );
         bytes32 previous = _statuses[account];
         _beforeSetStatus(account, previous, status);
@@ -123,12 +123,15 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, amount);
 
-        require(amount == 1 ether * (amount / 1 ether), "No fractional tokens");
+        require(
+            amount == 1 ether * (amount / 1 ether),
+            "ShareholderRegistry: No fractional tokens"
+        );
         require(
             (balanceOf(to) == 0 && amount == 1 ether) ||
                 (to == address(this)) ||
                 (to == address(0)),
-            "Only the DAO can have more than 1 share"
+            "ShareholderRegistry: Only the DAO can have more than 1 share"
         );
     }
 
