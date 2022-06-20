@@ -43,7 +43,17 @@ const GAS_PRICE = process.env.GAS_PRICE
 const config: HardhatUserConfig = {
   defaultNetwork: "hardhat",
   solidity: {
-    compilers: [{ version: "0.8.11", settings: {} }],
+    compilers: [
+      {
+        version: "0.8.11",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    ],
   },
   networks: {
     hardhat: {},
