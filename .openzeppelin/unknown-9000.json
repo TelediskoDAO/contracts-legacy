@@ -1,35 +1,40 @@
 {
   "manifestVersion": "3.2",
   "admin": {
-    "address": "0x350C6Fa99e0205b264C705f0159C8029958216e7",
-    "txHash": "0x954464ac5d4c243c20cbf7420691023026fcdbd2560bdd1dfe2fdeaa24d56c03"
+    "address": "0x083CBC32F3985145c443Df7036C57B1bF74C19c4",
+    "txHash": "0x04e4e9f9adc470c8a13e1e5e43427e2626ebba4b4a89ef337f024a7472692df9"
   },
   "proxies": [
     {
-      "address": "0x21daA233120356A14a97c236736fa0B664b3D6AE",
-      "txHash": "0x8a0bacc9c04461284e554a1af9d41951694e72a5741e43b5661a9b3d80aafeda",
+      "address": "0xE0602525F910Dfd0B5097f5Ff905eef45067c7fE",
+      "txHash": "0x3b60da522aed7e1f32189808495aa8f22d33a666a48e99a1045155574358716f",
       "kind": "transparent"
     },
     {
-      "address": "0x22D5c0F55393F8D12e53721A30181C6ed7Ff2BD1",
-      "txHash": "0x679ae7451d38791bbaaa1a55a70c896b395ce8ab332eace91f3a989a52dcd465",
+      "address": "0xE690727e6241daE469eA734A105cA485f4f4C72B",
+      "txHash": "0xf09756eb1b0a7fc9e7aab68892cd14d5c60344729e4142cfd82a36ce5ca40a1e",
       "kind": "transparent"
     },
     {
-      "address": "0x125e97f84D21C78DeCC60D6B604F4b138706500a",
-      "txHash": "0xd32678dc5e353930d314f8c4dbcf7b3a326826d06cf194a9300a4d2f5723615d",
+      "address": "0xc574dE4611D1918538e8C18cd6CF20D8489A773C",
+      "txHash": "0xf3a835de8431b5fd20aa80270941f94684fc7e5c23b528d2de41797180bfe284",
       "kind": "transparent"
     },
     {
-      "address": "0xc467c27c910DA54b72a591E2Acfa25f6fCB87FC6",
-      "txHash": "0x3feafca96ed46a6c57e20f78b2311acf6c5139f5799b2753a70a1a6224041bc7",
+      "address": "0xB00fc0A2C0856dCDe7103AC6Ab392B0D34C0fD10",
+      "txHash": "0x4ddde3fcecdaaf6c508ea20a159b1e55da2f4a9c03ed2002f4e9329b4cb96af3",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x4c03Df22d7b4012FA12635416b55Bed009c1397f",
+      "txHash": "0x5c8779801e57a887df3e27ef0f1bcbff957811f81eb71bd9870797f817ff594a",
       "kind": "transparent"
     }
   ],
   "impls": {
-    "e19a4798f9e4145fb44cfbdb63f774e004241038207205b56abd3e530a14ab8c": {
-      "address": "0xf64572D768c429725c7A8AF31FB2f0fa5cB56736",
-      "txHash": "0x4ae180e74fb18d119ad70a93feb1ebc0128415617b6f8a19382e2d58665a181b",
+    "dd46db540f2fda02a65b7f315c0466163c876dc51419d5b1c7b5a76028997db2": {
+      "address": "0x9b97e0D90869A49C8450FD409243d245937BFe14",
+      "txHash": "0x7f3cbdbd3ae4e64b1b3f6de3aef7013510bd1c4300f62eb3d9b83e7dc5b39112",
       "layout": {
         "storage": [
           {
@@ -100,7 +105,7 @@
             "label": "_delegationSnapshots",
             "offset": 0,
             "slot": "8",
-            "type": "t_mapping(t_address,t_struct(SnapshotsDelegates)6264_storage)",
+            "type": "t_mapping(t_address,t_struct(SnapshotsDelegates)6396_storage)",
             "contract": "VotingSnapshot",
             "src": "contracts/Voting/VotingSnapshot.sol:21"
           },
@@ -108,7 +113,7 @@
             "label": "_votingPowerSnapshots",
             "offset": 0,
             "slot": "9",
-            "type": "t_mapping(t_address,t_struct(SnapshotsValues)6271_storage)",
+            "type": "t_mapping(t_address,t_struct(SnapshotsValues)6403_storage)",
             "contract": "VotingSnapshot",
             "src": "contracts/Voting/VotingSnapshot.sol:22"
           },
@@ -116,7 +121,7 @@
             "label": "_totalVotingPowerSnapshots",
             "offset": 0,
             "slot": "10",
-            "type": "t_struct(SnapshotsValues)6271_storage",
+            "type": "t_struct(SnapshotsValues)6403_storage",
             "contract": "VotingSnapshot",
             "src": "contracts/Voting/VotingSnapshot.sol:23"
           },
@@ -183,11 +188,11 @@
             "label": "mapping(address => bool)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(SnapshotsDelegates)6264_storage)": {
+          "t_mapping(t_address,t_struct(SnapshotsDelegates)6396_storage)": {
             "label": "mapping(address => struct VotingSnapshot.SnapshotsDelegates)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(SnapshotsValues)6271_storage)": {
+          "t_mapping(t_address,t_struct(SnapshotsValues)6403_storage)": {
             "label": "mapping(address => struct VotingSnapshot.SnapshotsValues)",
             "numberOfBytes": "32"
           },
@@ -217,7 +222,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(SnapshotsDelegates)6264_storage": {
+          "t_struct(SnapshotsDelegates)6396_storage": {
             "label": "struct VotingSnapshot.SnapshotsDelegates",
             "members": [
               {
@@ -235,7 +240,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(SnapshotsValues)6271_storage": {
+          "t_struct(SnapshotsValues)6403_storage": {
             "label": "struct VotingSnapshot.SnapshotsValues",
             "members": [
               {
@@ -264,9 +269,9 @@
         }
       }
     },
-    "7573cdf175e81a11c03b2936035dd775d56cfbf73b00b362df7e34dafef384a4": {
-      "address": "0x5b21eA285ca04807c31686fD6BAF9a80a46bA692",
-      "txHash": "0x103fa266dab9ead38d6ef368cfce82a01b503762433de2553a7797a612e0ced5",
+    "885ec4747566b6b153e2969d01c7492dca7403df7542431b0319e67400e2baf8": {
+      "address": "0xeBD42099d87Fa8F200E1F3cc9cb9c027c33e671a",
+      "txHash": "0xf2610b20a65e0fac1a5002d591d43c5588a08fa624c1c133a62bbe1b72c7f6a1",
       "layout": {
         "storage": [
           {
@@ -378,7 +383,7 @@
             "label": "_voting",
             "offset": 0,
             "slot": "105",
-            "type": "t_contract(IVoting)5614",
+            "type": "t_contract(IVoting)5746",
             "contract": "ShareholderRegistryBase",
             "src": "contracts/ShareholderRegistry/ShareholderRegistryBase.sol:17"
           },
@@ -402,7 +407,7 @@
             "label": "_totalSupplySnapshots",
             "offset": 0,
             "slot": "108",
-            "type": "t_struct(TotalSupplySnapshots)4060_storage",
+            "type": "t_struct(TotalSupplySnapshots)4174_storage",
             "contract": "ShareholderRegistrySnapshot",
             "src": "contracts/ShareholderRegistry/ShareholderRegistrySnapshot.sol:18"
           },
@@ -410,7 +415,7 @@
             "label": "_accountStatusAndBalanceSnapshots",
             "offset": 0,
             "slot": "110",
-            "type": "t_mapping(t_address,t_struct(StatusAndBalanceSnapshots)4076_storage)",
+            "type": "t_mapping(t_address,t_struct(StatusAndBalanceSnapshots)4190_storage)",
             "contract": "ShareholderRegistrySnapshot",
             "src": "contracts/ShareholderRegistry/ShareholderRegistrySnapshot.sol:30"
           },
@@ -444,7 +449,7 @@
             "label": "address",
             "numberOfBytes": "20"
           },
-          "t_array(t_struct(StatusAndBalance)4068_storage)dyn_storage": {
+          "t_array(t_struct(StatusAndBalance)4182_storage)dyn_storage": {
             "label": "struct ShareholderRegistrySnapshot.StatusAndBalance[]",
             "numberOfBytes": "32"
           },
@@ -472,7 +477,7 @@
             "label": "bytes32",
             "numberOfBytes": "32"
           },
-          "t_contract(IVoting)5614": {
+          "t_contract(IVoting)5746": {
             "label": "contract IVoting",
             "numberOfBytes": "20"
           },
@@ -488,7 +493,7 @@
             "label": "mapping(address => mapping(address => uint256))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(StatusAndBalanceSnapshots)4076_storage)": {
+          "t_mapping(t_address,t_struct(StatusAndBalanceSnapshots)4190_storage)": {
             "label": "mapping(address => struct ShareholderRegistrySnapshot.StatusAndBalanceSnapshots)",
             "numberOfBytes": "32"
           },
@@ -522,7 +527,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(StatusAndBalance)4068_storage": {
+          "t_struct(StatusAndBalance)4182_storage": {
             "label": "struct ShareholderRegistrySnapshot.StatusAndBalance",
             "members": [
               {
@@ -540,7 +545,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(StatusAndBalanceSnapshots)4076_storage": {
+          "t_struct(StatusAndBalanceSnapshots)4190_storage": {
             "label": "struct ShareholderRegistrySnapshot.StatusAndBalanceSnapshots",
             "members": [
               {
@@ -551,14 +556,14 @@
               },
               {
                 "label": "values",
-                "type": "t_array(t_struct(StatusAndBalance)4068_storage)dyn_storage",
+                "type": "t_array(t_struct(StatusAndBalance)4182_storage)dyn_storage",
                 "offset": 0,
                 "slot": "1"
               }
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(TotalSupplySnapshots)4060_storage": {
+          "t_struct(TotalSupplySnapshots)4174_storage": {
             "label": "struct ShareholderRegistrySnapshot.TotalSupplySnapshots",
             "members": [
               {
@@ -587,9 +592,9 @@
         }
       }
     },
-    "edd7a28d3818a99fe1d928fdbe23c5889136e873da438b3344076da8b918ae05": {
-      "address": "0xFA8d0E94509c397f2EaaE7F1D45e9E62f0650C77",
-      "txHash": "0x50188a10f311a16e96874df8e2fa7d9f8ab05d38563f8a71a5a249b4fd023934",
+    "e3fd5083b8c320e5e81717cb393af8bd173ed675c1e6a52d7fe05d05e8e8b00b": {
+      "address": "0x1571131A2171B4d09897ef57CC799a20Db605b7F",
+      "txHash": "0xde549e0343362993fe4ed3321a70a8ae2bb670a720be54d3637a92cead4a5252",
       "layout": {
         "storage": [
           {
@@ -669,7 +674,7 @@
             "label": "_voting",
             "offset": 0,
             "slot": "101",
-            "type": "t_contract(IVoting)5614",
+            "type": "t_contract(IVoting)5746",
             "contract": "TelediskoTokenBase",
             "src": "contracts/TelediskoToken/TelediskoTokenBase.sol:10"
           },
@@ -701,7 +706,7 @@
             "label": "_offers",
             "offset": 0,
             "slot": "105",
-            "type": "t_mapping(t_address,t_struct(Offers)4626_storage)",
+            "type": "t_mapping(t_address,t_struct(Offers)4759_storage)",
             "contract": "TelediskoTokenBase",
             "src": "contracts/TelediskoToken/TelediskoTokenBase.sol:58"
           },
@@ -717,7 +722,7 @@
             "label": "_accountBalanceSnapshots",
             "offset": 0,
             "slot": "107",
-            "type": "t_mapping(t_address,t_struct(Snapshots)5305_storage)",
+            "type": "t_mapping(t_address,t_struct(Snapshots)5437_storage)",
             "contract": "TelediskoTokenSnapshot",
             "src": "contracts/TelediskoToken/TelediskoTokenSnapshot.sol:17"
           },
@@ -725,7 +730,7 @@
             "label": "_totalSupplySnapshots",
             "offset": 0,
             "slot": "108",
-            "type": "t_struct(Snapshots)5305_storage",
+            "type": "t_struct(Snapshots)5437_storage",
             "contract": "TelediskoTokenSnapshot",
             "src": "contracts/TelediskoToken/TelediskoTokenSnapshot.sol:18"
           },
@@ -787,7 +792,7 @@
             "label": "contract IShareholderRegistry",
             "numberOfBytes": "20"
           },
-          "t_contract(IVoting)5614": {
+          "t_contract(IVoting)5746": {
             "label": "contract IVoting",
             "numberOfBytes": "20"
           },
@@ -799,11 +804,11 @@
             "label": "mapping(address => mapping(address => uint256))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(Offers)4626_storage)": {
+          "t_mapping(t_address,t_struct(Offers)4759_storage)": {
             "label": "mapping(address => struct TelediskoTokenBase.Offers)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(Snapshots)5305_storage)": {
+          "t_mapping(t_address,t_struct(Snapshots)5437_storage)": {
             "label": "mapping(address => struct TelediskoTokenSnapshot.Snapshots)",
             "numberOfBytes": "32"
           },
@@ -815,7 +820,7 @@
             "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint128,t_struct(Offer)4616_storage)": {
+          "t_mapping(t_uint128,t_struct(Offer)4749_storage)": {
             "label": "mapping(uint128 => struct TelediskoTokenBase.Offer)",
             "numberOfBytes": "32"
           },
@@ -823,7 +828,7 @@
             "label": "string",
             "numberOfBytes": "32"
           },
-          "t_struct(Offer)4616_storage": {
+          "t_struct(Offer)4749_storage": {
             "label": "struct TelediskoTokenBase.Offer",
             "members": [
               {
@@ -841,7 +846,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(Offers)4626_storage": {
+          "t_struct(Offers)4759_storage": {
             "label": "struct TelediskoTokenBase.Offers",
             "members": [
               {
@@ -858,7 +863,7 @@
               },
               {
                 "label": "offer",
-                "type": "t_mapping(t_uint128,t_struct(Offer)4616_storage)",
+                "type": "t_mapping(t_uint128,t_struct(Offer)4749_storage)",
                 "offset": 0,
                 "slot": "1"
               }
@@ -883,7 +888,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(Snapshots)5305_storage": {
+          "t_struct(Snapshots)5437_storage": {
             "label": "struct TelediskoTokenSnapshot.Snapshots",
             "members": [
               {
@@ -916,9 +921,9 @@
         }
       }
     },
-    "6fabb85f4b326cd93897687f8e57ebb4c0695b9810a186b98f33ac31fea092d8": {
-      "address": "0x341C43550644b55Fb5FcE556F4cb53F85306DAcc",
-      "txHash": "0x30e1e518bc1ec06d937bc29348f32664410c345924a4b2ea5eabc3a4350d4868",
+    "eee8de8f9c95a3ac966255d15b1fbf36d5da14a8737db6ae5398ffff2e467e9b": {
+      "address": "0xCc0B7f8136D88795437ce3757bCde25Fd24A954A",
+      "txHash": "0x0c5c1d3fd8fc53a74424992dd5d175ad8790f34a5f6bd760b2265eceac0b51b2",
       "layout": {
         "storage": [
           {
@@ -966,7 +971,7 @@
             "label": "_telediskoToken",
             "offset": 0,
             "slot": "4",
-            "type": "t_contract(ITelediskoToken)4422",
+            "type": "t_contract(ITelediskoToken)4536",
             "contract": "ResolutionManager",
             "src": "contracts/ResolutionManager/ResolutionManager.sol:18"
           },
@@ -974,7 +979,7 @@
             "label": "_voting",
             "offset": 0,
             "slot": "5",
-            "type": "t_contract(IVoting)5614",
+            "type": "t_contract(IVoting)5746",
             "contract": "ResolutionManager",
             "src": "contracts/ResolutionManager/ResolutionManager.sol:19"
           },
@@ -1016,11 +1021,11 @@
             "label": "contract IShareholderRegistry",
             "numberOfBytes": "20"
           },
-          "t_contract(ITelediskoToken)4422": {
+          "t_contract(ITelediskoToken)4536": {
             "label": "contract ITelediskoToken",
             "numberOfBytes": "20"
           },
-          "t_contract(IVoting)5614": {
+          "t_contract(IVoting)5746": {
             "label": "contract IVoting",
             "numberOfBytes": "20"
           },
