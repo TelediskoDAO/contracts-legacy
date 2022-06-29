@@ -22,7 +22,7 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
         bytes32 current
     );
 
-    mapping(address => bytes32) _statuses;
+    mapping(address => bytes32) internal _statuses;
 
     function initialize(string memory name, string memory symbol)
         public

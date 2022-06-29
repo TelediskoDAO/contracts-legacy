@@ -27,7 +27,8 @@ abstract contract ShareholderRegistrySnapshot is
         StatusAndBalance[] values;
     }
 
-    mapping(address => StatusAndBalanceSnapshots) _accountStatusAndBalanceSnapshots;
+    mapping(address => StatusAndBalanceSnapshots)
+        internal _accountStatusAndBalanceSnapshots;
 
     /**
      * @dev Retrieves the total supply at the time `snapshotId` was created.

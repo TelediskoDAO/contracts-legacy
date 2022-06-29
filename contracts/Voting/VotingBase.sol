@@ -12,9 +12,9 @@ contract VotingBase {
     bytes32 internal _contributorRole;
 
     // TODO Turn into struct
-    mapping(address => address) _delegates;
-    mapping(address => uint256) _votingPower;
-    mapping(address => uint256) _delegators;
+    mapping(address => address) internal _delegates;
+    mapping(address => uint256) internal _votingPower;
+    mapping(address => uint256) internal _delegators;
 
     uint256 internal _totalVotingPower;
 
