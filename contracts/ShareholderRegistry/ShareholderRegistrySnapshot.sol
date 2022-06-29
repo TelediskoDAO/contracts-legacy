@@ -15,7 +15,7 @@ abstract contract ShareholderRegistrySnapshot is
         uint256[] values;
     }
 
-    TotalSupplySnapshots _totalSupplySnapshots;
+    TotalSupplySnapshots internal _totalSupplySnapshots;
 
     struct StatusAndBalance {
         bytes32 status;

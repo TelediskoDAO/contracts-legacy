@@ -6,17 +6,17 @@ import "../ShareholderRegistry/IShareholderRegistry.sol";
 import "./IVoting.sol";
 
 contract VotingBase {
-    IShareholderRegistry _shareholderRegistry;
-    IERC20Upgradeable _token;
+    IShareholderRegistry internal _shareholderRegistry;
+    IERC20Upgradeable internal _token;
 
-    bytes32 _contributorRole;
+    bytes32 internal _contributorRole;
 
     // TODO Turn into struct
     mapping(address => address) _delegates;
     mapping(address => uint256) _votingPower;
     mapping(address => uint256) _delegators;
 
-    uint256 _totalVotingPower;
+    uint256 internal _totalVotingPower;
 
     event DelegateChanged(
         address indexed delegator,

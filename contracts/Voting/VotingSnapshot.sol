@@ -20,7 +20,7 @@ abstract contract VotingSnapshot is VotingBase, Snapshottable {
 
     mapping(address => SnapshotsDelegates) _delegationSnapshots;
     mapping(address => SnapshotsValues) _votingPowerSnapshots;
-    SnapshotsValues _totalVotingPowerSnapshots;
+    SnapshotsValues internal _totalVotingPowerSnapshots;
 
     function getDelegateAt(address account, uint256 snapshotId)
         public

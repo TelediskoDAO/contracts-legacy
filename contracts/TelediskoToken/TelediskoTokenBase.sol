@@ -7,8 +7,8 @@ import "../Voting/IVoting.sol";
 import "../ShareholderRegistry/IShareholderRegistry.sol";
 
 contract TelediskoTokenBase is ERC20Upgradeable {
-    IVoting _voting;
-    IShareholderRegistry _shareholderRegistry;
+    IVoting internal _voting;
+    IShareholderRegistry internal _shareholderRegistry;
 
     function initialize(string memory name, string memory symbol)
         public
