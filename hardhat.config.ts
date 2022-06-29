@@ -13,6 +13,8 @@ import "@nomiclabs/hardhat-etherscan";
 
 import("./tasks").catch((e) => console.log("Cannot load tasks", e.toString()));
 
+console.log(process.env.REPORT_GAS);
+
 const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
 const BLAST_API_KEY = process.env.BLAST_API_KEY || "";
 const RINKEBY_PRIVATE_KEY =
