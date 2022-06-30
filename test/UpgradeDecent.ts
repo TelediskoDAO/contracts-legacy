@@ -7,16 +7,15 @@ import {
   Voting,
   TelediskoToken,
   ResolutionManager,
-  ResolutionManagerV2Mock__factory,
   MintingResolutionManager,
   MintingResolutionManager__factory,
-  TelediskoTokenV2Mock__factory,
-  NewTelediskoTokenMock__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
 import { deployDAO } from "./utils/deploy";
 import { parseEther } from "ethers/lib/utils";
+import { roles } from "./utils/roles";
+import { BigNumber } from "ethers";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -79,116 +78,75 @@ describe("Upgrade", () => {
     }
 
     it("should allow to execute resolution minting", async () => {
+      // Deploy
+      // Run one resolution about minting
+      // Check resolution outcome
+      // Mint tokens manually
+      // Upgrade
+      // Run one mintable resolution
+      // Check new and old resolution outcome (to see nothing broke)
+      // Execute it
+      // Check balance of contributors
+
       // Change notice period of the a resolution type in the Resolution contract
       await _prepareForVoting(user1, 42);
       const resolutionId = await _prepareResolution(6);
       const resolutionObject = await resolution.resolutions(resolutionId);
 
-      await expect(
-        resolution.connect(user1).vote(resolutionId, true)
-      ).revertedWith("Resolution: not votable");
-
       // Originally is 3 days notice, 2 days voting
       const votingTimestamp =
         resolutionObject.approveTimestamp.toNumber() + DAY * 3;
       await setEVMTimestamp(votingTimestamp);
-
       await resolution.connect(user1).vote(resolutionId, true);
 
       const votingEndTimestamp = (await getEVMTimestamp()) + DAY * 2;
       await setEVMTimestamp(votingEndTimestamp);
 
-      await expect(
-        resolution.connect(user1).vote(resolutionId, false)
-      ).revertedWith("Resolution: not votable");
+      expect(await resolution.getResolutionResult(resolutionId)).eq(true);
 
-      const ResolutionV2MockFactory = (await ethers.getContractFactory(
-        "ResolutionManagerV2Mock"
-      )) as ResolutionManagerV2Mock__factory;
+      const MintingResolutionManagerFactory = (await ethers.getContractFactory(
+        "MintingResolutionManager"
+      )) as MintingResolutionManager__factory;
 
-      const resolutionV2Contract = await upgrades.upgradeProxy(
+      const mintingResolutionContract = (await upgrades.upgradeProxy(
         resolution.address,
-        ResolutionV2MockFactory
+        MintingResolutionManagerFactory
+      )) as MintingResolutionManager;
+      await mintingResolutionContract.deployed();
+      await mintingResolutionContract.reinitialize(token.address);
+      await token.grantRole(
+        await roles.OPERATOR_ROLE(),
+        mintingResolutionContract.address
       );
-      await resolutionV2Contract.deployed();
-      await resolutionV2Contract.reinitialize();
 
-      const newResolutionId = await _prepareResolution(6);
+      const newResolutionId = 2;
+      await mintingResolutionContract
+        .connect(user1)
+        ["createResolution(string,uint256,bool,address[],uint256[])"](
+          "Qxtest",
+          6,
+          true,
+          [user1.address, user2.address],
+          [42, 55]
+        );
+
+      await resolution
+        .connect(managingBoard)
+        .approveResolution(newResolutionId);
+
       const newResolutionObject = await resolution.resolutions(newResolutionId);
 
-      await expect(
-        resolution.connect(user1).vote(newResolutionId, true)
-      ).revertedWith("Resolution: not votable");
-
-      // Now it's expected to have 1 day notice, 1 days voting
       const newVotingTimestamp =
-        newResolutionObject.approveTimestamp.toNumber() + DAY * 1;
+        newResolutionObject.approveTimestamp.toNumber() + DAY * 3 + DAY * 2;
       await setEVMTimestamp(newVotingTimestamp);
-
-      await resolution.connect(user1).vote(newResolutionId, true);
-
-      const newVotingEndTimestamp = (await getEVMTimestamp()) + DAY * 1;
-      await setEVMTimestamp(newVotingEndTimestamp);
       await mineEVMBlock();
 
-      await expect(
-        resolution.connect(user1).vote(newResolutionId, false)
-      ).revertedWith("Resolution: not votable");
-    });
+      expect(await resolution.getResolutionResult(newResolutionId)).eq(true);
 
-    it("should change contract logic", async () => {
-      // Prevents also shareholder from transfering their tokens on TelediskoToken
-      await shareholderRegistry.mint(user1.address, parseEther("1"));
-      await shareholderRegistry.setStatus(contributorStatus, user1.address);
-      await _mintTokens(user1, 42);
+      await mintingResolutionContract.executeMinting(newResolutionId);
 
-      await shareholderRegistry.mint(user2.address, parseEther("1"));
-      await shareholderRegistry.setStatus(shareholderStatus, user2.address);
-      await _mintTokens(user2, 42);
-
-      await expect(
-        token.connect(user1).transfer(user2.address, 1)
-      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
-
-      await token.connect(user2).transfer(user1.address, 1);
-
-      const TelediskoTokenV2MockFactory = (await ethers.getContractFactory(
-        "TelediskoTokenV2Mock"
-      )) as TelediskoTokenV2Mock__factory;
-
-      const tokenV2Contract = await upgrades.upgradeProxy(
-        token.address,
-        TelediskoTokenV2MockFactory
-      );
-      await tokenV2Contract.deployed();
-
-      await expect(
-        token.connect(user1).transfer(user2.address, 1)
-      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
-
-      await expect(
-        token.connect(user2).transfer(user1.address, 1)
-      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
-    });
-
-    it("should change events", async () => {
-      await expect(token.mintVesting(user1.address, 31))
-        .emit(token, "VestingSet")
-        .withArgs(user1.address, 31);
-
-      const NewTelediskoTokenMockFactory = (await ethers.getContractFactory(
-        "NewTelediskoTokenMock"
-      )) as NewTelediskoTokenMock__factory;
-
-      const tokenV2Contract = await upgrades.upgradeProxy(
-        token.address,
-        NewTelediskoTokenMockFactory
-      );
-      await tokenV2Contract.deployed();
-
-      await expect(token.mintVesting(user1.address, 31))
-        .emit(tokenV2Contract, "VestingSet2")
-        .withArgs(deployer.address, user1.address, 31);
+      expect(await token.balanceOf(user1.address)).eq(BigNumber.from(84));
+      expect(await token.balanceOf(user2.address)).eq(BigNumber.from(55));
     });
   });
 });
