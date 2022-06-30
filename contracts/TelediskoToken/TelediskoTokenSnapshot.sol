@@ -14,8 +14,8 @@ abstract contract TelediskoTokenSnapshot is TelediskoTokenBase, Snapshottable {
         uint256[] values;
     }
 
-    mapping(address => Snapshots) _accountBalanceSnapshots;
-    Snapshots _totalSupplySnapshots;
+    mapping(address => Snapshots) internal _accountBalanceSnapshots;
+    Snapshots internal _totalSupplySnapshots;
 
     /**
      * @dev Retrieves the balance of `account` at the time `snapshotId` was created.

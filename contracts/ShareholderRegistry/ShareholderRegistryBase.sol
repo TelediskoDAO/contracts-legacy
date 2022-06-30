@@ -14,7 +14,7 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
     bytes32 public CONTRIBUTOR_STATUS;
     bytes32 public MANAGING_BOARD_STATUS;
 
-    IVoting _voting;
+    IVoting internal _voting;
 
     event StatusChanged(
         address indexed account,
@@ -22,7 +22,7 @@ contract ShareholderRegistryBase is ERC20Upgradeable {
         bytes32 current
     );
 
-    mapping(address => bytes32) _statuses;
+    mapping(address => bytes32) internal _statuses;
 
     function initialize(string memory name, string memory symbol)
         public
