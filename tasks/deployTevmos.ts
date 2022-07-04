@@ -42,6 +42,21 @@ task("deploy", "Deploy DAO", async (_, hre) => {
   )) as ResolutionManager;
 
   console.log("  Grant roles");
+
+  console.log("    🏅 Grant roles for ResolutionManager");
+  await resolutionManagerContract.grantRole(
+    ROLES.RESOLUTION_ROLE,
+    resolutionManagerContract.address
+  );
+  await resolutionManagerContract.grantRole(
+    ROLES.RESOLUTION_ROLE,
+    deployer.address
+  );
+  await resolutionManagerContract.grantRole(
+    ROLES.OPERATOR_ROLE,
+    deployer.address
+  );
+
   console.log("    🏅 Grant roles for Voting");
   await votingContract.grantRole(
     ROLES.RESOLUTION_ROLE,
@@ -52,10 +67,15 @@ task("deploy", "Deploy DAO", async (_, hre) => {
     shareholderRegistryContract.address
   );
   await votingContract.grantRole(ROLES.OPERATOR_ROLE, deployer.address);
+  await votingContract.grantRole(ROLES.RESOLUTION_ROLE, deployer.address);
 
   console.log("    🏅 Grant roles for ShareholderRegistry");
   await shareholderRegistryContract.grantRole(
     ROLES.OPERATOR_ROLE,
+    deployer.address
+  );
+  await shareholderRegistryContract.grantRole(
+    ROLES.RESOLUTION_ROLE,
     deployer.address
   );
   await shareholderRegistryContract.grantRole(
@@ -65,10 +85,11 @@ task("deploy", "Deploy DAO", async (_, hre) => {
 
   console.log("    🏅 Grant roles for TelediskoToken");
   await telediskoTokenContract.grantRole(ROLES.OPERATOR_ROLE, deployer.address);
+  await telediskoTokenContract.grantRole(ROLES.ESCROW_ROLE, deployer.address);
   await telediskoTokenContract.grantRole(
     ROLES.RESOLUTION_ROLE,
     deployer.address
-  ); // Fix this, we need to explicitely grant the MANAGER acces to mint
+  );
   const txGranting = await telediskoTokenContract.grantRole(
     ROLES.RESOLUTION_ROLE,
     resolutionManagerContract.address
