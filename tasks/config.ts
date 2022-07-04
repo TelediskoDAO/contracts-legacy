@@ -39,6 +39,7 @@ export type NetworkConfig = {
 export const ROLES = {
   OPERATOR_ROLE: keccak256(toUtf8Bytes("OPERATOR_ROLE")),
   RESOLUTION_ROLE: keccak256(toUtf8Bytes("RESOLUTION_ROLE")),
+  ESCROW_ROLE: keccak256(toUtf8Bytes("ESCROW_ROLE")),
   SHAREHOLDER_REGISTRY_ROLE: keccak256(
     toUtf8Bytes("SHAREHOLDER_REGISTRY_ROLE")
   ),
