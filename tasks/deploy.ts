@@ -117,6 +117,7 @@ task("deploy", "Deploy DAO", async (_, hre) => {
 
   console.log("    🏅 Grant roles for TelediskoToken");
   await telediskoTokenContract.grantRole(ROLES.OPERATOR_ROLE, deployer.address);
+  await telediskoTokenContract.grantRole(ROLES.ESCROW_ROLE, deployer.address);
   await telediskoTokenContract.grantRole(
     ROLES.RESOLUTION_ROLE,
     deployer.address

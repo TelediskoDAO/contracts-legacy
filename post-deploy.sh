@@ -14,6 +14,7 @@ echo "Granting OPERATOR_ROLE on ShareholderRegistry"
 cat $WALLETS_FILE | xargs -n1 -IWALLET npx hardhat grant-role --contract ShareholderRegistry --role OPERATOR_ROLE --account WALLET --network $NETWORK
 echo "Granting OPERATOR_ROLE on TelediskoToken"
 cat $WALLETS_FILE | xargs -n1 -IWALLET npx hardhat grant-role --contract TelediskoToken --role OPERATOR_ROLE --account WALLET --network $NETWORK
+
 echo "Granting ESCROW_ROLE on TelediskoToken"
 cat $WALLETS_FILE | xargs -n1 -IWALLET npx hardhat grant-role --contract TelediskoToken --role ESCROW_ROLE --account WALLET --network $NETWORK
 
