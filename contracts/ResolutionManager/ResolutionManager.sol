@@ -242,7 +242,10 @@ contract ResolutionManager is Initializable, Context, AccessControl {
 
     function executeResolution(uint256 resolutionId) public virtual {
         Resolution storage resolution = resolutions[resolutionId];
-
+        require(
+            resolution.executionTo.length > 0,
+            "Resolution: nothing to execute"
+        );
         require(resolution.approveTimestamp > 0, "Resolution: not approved");
 
         (, uint256 votingEnd) = _votingWindow(resolution);

@@ -1348,7 +1348,22 @@ describe("Resolution", () => {
     });
 
     it("should not execute a resolution with no executors", async () => {
-      expect(true).true;
+      await setupUser(user2, 1);
+      await setupResolution(1);
+      let approvalTimestamp = await getEVMTimestamp();
+
+      let votingTimestamp = approvalTimestamp + DAY * 3;
+      await setEVMTimestamp(votingTimestamp);
+      await mineEVMBlock();
+
+      await resolution.connect(user1).vote(1, true);
+
+      await setEVMTimestamp(votingTimestamp + DAY * 2);
+      await mineEVMBlock();
+
+      await expect(resolution.executeResolution(1)).revertedWith(
+        "Resolution: nothing to execute"
+      );
     });
 
     it("should execute a passed resolution with multiple executors", async () => {
