@@ -146,19 +146,23 @@ describe("Resolution", () => {
 
   describe("creation logic", async () => {
     it("allows to create a resolution", async () => {
-      await expect(resolution.connect(user1).createResolution("test", 0, false))
+      await expect(
+        resolution.connect(user1).createResolution("test", 0, false, [], [])
+      )
         .to.emit(resolution, "ResolutionCreated")
         .withArgs(user1.address, resolutionId);
     });
     it("doesn't allow non contributors to create a resolution", async () => {
       await expect(
-        resolution.connect(nonContributor).createResolution("test", 0, false)
+        resolution
+          .connect(nonContributor)
+          .createResolution("test", 0, false, [], [])
       ).revertedWith("Resolution: only contributor can create");
     });
     it("allows to create a resolution and read the resolutionId with an event", async () => {
       const tx = await resolution
         .connect(user1)
-        .createResolution("test", 0, false);
+        .createResolution("test", 0, false, [], []);
 
       function getResolutionId(receipt: ContractReceipt) {
         const filter = resolution.filters.ResolutionCreated(resolution.address);
@@ -179,7 +183,7 @@ describe("Resolution", () => {
 
     it("doesn't allow to create a negative resolution if type is non-negative", async () => {
       await expect(
-        resolution.connect(user1).createResolution("test", 0, true)
+        resolution.connect(user1).createResolution("test", 0, true, [], [])
       ).revertedWith("Resolution: cannot be negative");
     });
   });
@@ -202,7 +206,7 @@ describe("Resolution", () => {
       }
       const tx = await resolution
         .connect(user1)
-        .createResolution("test", 0, false);
+        .createResolution("test", 0, false, [], []);
       const receipt = await tx.wait();
       resolutionId = getResolutionId(receipt).toNumber();
     });
@@ -211,7 +215,7 @@ describe("Resolution", () => {
       await expect(
         resolution
           .connect(managingBoard)
-          .updateResolution(resolutionId, "updated test", 6, true)
+          .updateResolution(resolutionId, "updated test", 6, true, [], [])
       )
         .to.emit(resolution, "ResolutionUpdated")
         .withArgs(managingBoard.address, resolutionId);
@@ -222,9 +226,13 @@ describe("Resolution", () => {
     });
 
     it("doesn't allow the managing board to update to a negative resolution if type is non-negative", async () => {
-      await resolution.connect(user1).createResolution("test", 0, false);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 0, false, [], []);
       await expect(
-        resolution.connect(managingBoard).updateResolution(1, "test", 0, true)
+        resolution
+          .connect(managingBoard)
+          .updateResolution(1, "test", 0, true, [], [])
       ).revertedWith("Resolution: cannot be negative");
     });
 
@@ -233,7 +241,7 @@ describe("Resolution", () => {
       await expect(
         resolution
           .connect(managingBoard)
-          .updateResolution(resolutionId, "updated test", 6, true)
+          .updateResolution(resolutionId, "updated test", 6, true, [], [])
       ).revertedWith("Resolution: already approved");
     });
 
@@ -241,7 +249,7 @@ describe("Resolution", () => {
       await expect(
         resolution
           .connect(user1)
-          .updateResolution(resolutionId, "updated test", 6, true)
+          .updateResolution(resolutionId, "updated test", 6, true, [], [])
       ).revertedWith("Resolution: only managing board can update");
     });
   });
@@ -338,7 +346,9 @@ describe("Resolution", () => {
     });
 
     it("should allow the managing board to approve an existing resolution", async () => {
-      await resolution.connect(user1).createResolution("test", 0, false);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 0, false, [], []);
 
       await expect(
         resolution.connect(managingBoard).approveResolution(resolutionId)
@@ -352,7 +362,9 @@ describe("Resolution", () => {
     });
 
     it("should not allow non managing board members to approve an existing resolution", async () => {
-      await resolution.connect(user1).createResolution("test", 0, false);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 0, false, [], []);
 
       await expect(
         resolution.connect(user1).approveResolution(resolutionId)
@@ -360,7 +372,9 @@ describe("Resolution", () => {
     });
 
     it("should fail if already approved", async () => {
-      await resolution.connect(user1).createResolution("test", 0, false);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 0, false, [], []);
 
       await resolution.connect(managingBoard).approveResolution(resolutionId);
 
@@ -380,7 +394,9 @@ describe("Resolution", () => {
     });
 
     it("should not allow to vote on a non approved resolution", async () => {
-      await resolution.connect(user1).createResolution("test", 0, false);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 0, false, [], []);
 
       await expect(
         resolution.connect(user1).vote(resolutionId, false)
@@ -388,7 +404,9 @@ describe("Resolution", () => {
     });
 
     it("should not allow to vote on a resolution when voting didn't start", async () => {
-      await resolution.connect(user1).createResolution("test", 0, false);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 0, false, [], []);
       await resolution.connect(managingBoard).approveResolution(resolutionId);
 
       await expect(resolution.connect(user1).vote(1, false)).revertedWith(
@@ -397,7 +415,9 @@ describe("Resolution", () => {
     });
 
     it("should not allow to vote on a resolution when voting ended", async () => {
-      await resolution.connect(user1).createResolution("test", 0, false);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 0, false, [], []);
       await resolution.connect(managingBoard).approveResolution(resolutionId);
       let approvalTimestamp = await getEVMTimestamp();
 
@@ -410,7 +430,9 @@ describe("Resolution", () => {
     });
 
     it("should allow to vote on an approved resolution when voting started", async () => {
-      await resolution.connect(user1).createResolution("test", 0, false);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 0, false, [], []);
       await resolution.connect(managingBoard).approveResolution(resolutionId);
       let approvalTimestamp = await getEVMTimestamp();
 
@@ -423,7 +445,9 @@ describe("Resolution", () => {
 
   describe("voting logic", async () => {
     beforeEach(async () => {
-      await resolution.connect(user1).createResolution("test", 0, false);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 0, false, [], []);
       await resolution.connect(managingBoard).approveResolution(resolutionId);
       let approvalTimestamp = await getEVMTimestamp();
 
@@ -1104,7 +1128,9 @@ describe("Resolution", () => {
     ) {
       await voting.mock_getTotalVotingPowerAt(totalVotingPower);
 
-      await resolution.connect(user1).createResolution("test", 6, negative);
+      await resolution
+        .connect(user1)
+        .createResolution("test", 6, negative, [], []);
       await resolution.connect(managingBoard).approveResolution(1);
       const approveTimestamp = await getEVMTimestamp();
       await setEVMTimestamp(approveTimestamp + 3 * DAY);
