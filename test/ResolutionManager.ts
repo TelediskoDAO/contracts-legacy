@@ -11,11 +11,14 @@ import {
   TelediskoTokenMock__factory,
   ResolutionManager,
   ResolutionManager__factory,
+  ResolutionExecutorMock,
+  ResolutionExecutorMock__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, ContractReceipt } from "ethers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
 import { roles } from "./utils/roles";
+import { hexlify } from "ethers/lib/utils";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -33,6 +36,7 @@ describe("Resolution", () => {
   let token: TelediskoTokenMock;
   let resolution: ResolutionManager;
   let shareholderRegistry: ShareholderRegistryMock;
+  let resolutionExecutorMock: ResolutionExecutorMock;
   let deployer: SignerWithAddress,
     managingBoard: SignerWithAddress,
     user1: SignerWithAddress,
@@ -58,6 +62,11 @@ describe("Resolution", () => {
       deployer
     )) as ShareholderRegistryMock__factory;
 
+    const ResolutionExecutorMockFactory = (await ethers.getContractFactory(
+      "ResolutionExecutorMock",
+      deployer
+    )) as ResolutionExecutorMock__factory;
+
     const ResolutionFactory = (await ethers.getContractFactory(
       "ResolutionManager",
       deployer
@@ -78,6 +87,11 @@ describe("Resolution", () => {
       }
     )) as ShareholderRegistryMock;
     await shareholderRegistry.deployed();
+
+    resolutionExecutorMock = (await upgrades.deployProxy(
+      ResolutionExecutorMockFactory
+    )) as ResolutionExecutorMock;
+    await resolutionExecutorMock.deployed();
 
     managingBoardStatus = await shareholderRegistry.MANAGING_BOARD_STATUS();
     contributorStatus = await shareholderRegistry.CONTRIBUTOR_STATUS();
@@ -137,6 +151,27 @@ describe("Resolution", () => {
       user.address,
       flag
     );
+  }
+
+  async function setupUser(user: SignerWithAddress, votingPower: number) {
+    await voting.mock_getDelegateAt(user.address, user.address);
+    await voting.mock_getVotingPowerAt(user.address, votingPower);
+  }
+
+  async function setupResolution(
+    totalVotingPower: number,
+    negative: boolean = false,
+    executeTo: string[] = [],
+    executeData: string[] = []
+  ) {
+    await voting.mock_getTotalVotingPowerAt(totalVotingPower);
+
+    await resolution
+      .connect(user1)
+      .createResolution("test", 6, negative, executeTo, executeData);
+    await resolution.connect(managingBoard).approveResolution(1);
+    const approveTimestamp = await getEVMTimestamp();
+    await setEVMTimestamp(approveTimestamp + 3 * DAY);
   }
 
   let resolutionId: number;
@@ -1117,25 +1152,6 @@ describe("Resolution", () => {
   });
 
   describe("resolution outcome", async () => {
-    async function setupUser(user: SignerWithAddress, votingPower: number) {
-      await voting.mock_getDelegateAt(user.address, user.address);
-      await voting.mock_getVotingPowerAt(user.address, votingPower);
-    }
-
-    async function setupResolution(
-      totalVotingPower: number,
-      negative: boolean = false
-    ) {
-      await voting.mock_getTotalVotingPowerAt(totalVotingPower);
-
-      await resolution
-        .connect(user1)
-        .createResolution("test", 6, negative, [], []);
-      await resolution.connect(managingBoard).approveResolution(1);
-      const approveTimestamp = await getEVMTimestamp();
-      await setEVMTimestamp(approveTimestamp + 3 * DAY);
-    }
-
     it("should return true when minimum quorum is achieved - 1 user", async () => {
       await setupUser(user1, 51);
       await setupResolution(100);
@@ -1226,6 +1242,133 @@ describe("Resolution", () => {
 
       const result = await resolution.getResolutionResult(1);
       expect(result).false;
+    });
+  });
+
+  describe("resolution execution", async () => {
+    it("should create a resolution with multiple executors", async () => {
+      await resolution
+        .connect(user1)
+        .createResolution(
+          "test",
+          0,
+          false,
+          [resolutionExecutorMock.address, user2.address],
+          [hexlify(42), hexlify(43)]
+        );
+
+      const result = await resolution.getExecutionDetails(1);
+
+      expect(result[0][0]).equal(resolutionExecutorMock.address);
+      expect(result[0][1]).equal(user2.address);
+      expect(result[1][0]).equal(hexlify(42));
+      expect(result[1][1]).equal(hexlify(43));
+    });
+
+    it("should execute a passed resolution with 1 executor", async () => {
+      const abi = ["function mockExecuteSimple(uint256 a)"];
+      const iface = new ethers.utils.Interface(abi);
+      const data = iface.encodeFunctionData("mockExecuteSimple", [42]);
+      await setupUser(user1, 50);
+      await setupUser(user2, 1);
+      await setupResolution(
+        51,
+        false,
+        [resolutionExecutorMock.address],
+        [data]
+      );
+      let approvalTimestamp = await getEVMTimestamp();
+
+      let votingTimestamp = approvalTimestamp + DAY * 3;
+      await setEVMTimestamp(votingTimestamp);
+      await mineEVMBlock();
+
+      await resolution.connect(user1).vote(1, true);
+
+      await setEVMTimestamp(votingTimestamp + DAY * 2);
+      await mineEVMBlock();
+
+      await resolution.executeResolution(1);
+    });
+
+    it("should pass the given single parameter to the executor", async () => {
+      const abi = ["function mockExecuteSimple(uint256 a)"];
+      const iface = new ethers.utils.Interface(abi);
+      const data = iface.encodeFunctionData("mockExecuteSimple", [42]);
+      await setupUser(user1, 50);
+      await setupUser(user2, 1);
+      await setupResolution(
+        51,
+        false,
+        [resolutionExecutorMock.address],
+        [data]
+      );
+      let approvalTimestamp = await getEVMTimestamp();
+
+      let votingTimestamp = approvalTimestamp + DAY * 3;
+      await setEVMTimestamp(votingTimestamp);
+      await mineEVMBlock();
+
+      await resolution.connect(user1).vote(1, true);
+
+      await setEVMTimestamp(votingTimestamp + DAY * 2);
+      await mineEVMBlock();
+
+      await expect(resolution.executeResolution(1))
+        .to.emit(resolutionExecutorMock, "MockExecutionSimple")
+        .withArgs(42);
+    });
+
+    it("should pass the given list parameter to the executor", async () => {
+      const abi = ["function mockExecuteArray(uint256[] memory a)"];
+      const iface = new ethers.utils.Interface(abi);
+      const data = iface.encodeFunctionData("mockExecuteArray", [[42, 43]]);
+      await setupUser(user1, 50);
+      await setupUser(user2, 1);
+      await setupResolution(
+        51,
+        false,
+        [resolutionExecutorMock.address],
+        [data]
+      );
+      let approvalTimestamp = await getEVMTimestamp();
+
+      let votingTimestamp = approvalTimestamp + DAY * 3;
+      await setEVMTimestamp(votingTimestamp);
+      await mineEVMBlock();
+
+      await resolution.connect(user1).vote(1, true);
+
+      await setEVMTimestamp(votingTimestamp + DAY * 2);
+      await mineEVMBlock();
+
+      await expect(resolution.executeResolution(1))
+        .to.emit(resolutionExecutorMock, "MockExecutionArray")
+        .withArgs([42, 43]);
+    });
+
+    it("should not execute a resolution with no executors", async () => {
+      expect(true).true;
+    });
+
+    it("should execute a passed resolution with multiple executors", async () => {
+      expect(true).true;
+    });
+
+    it("should not execute a resolution that is not ended", async () => {
+      expect(true).true;
+    });
+
+    it("should not execute a resolution that is not approved", async () => {
+      expect(true).true;
+    });
+
+    it("should not execute a resolution more than once", async () => {
+      expect(true).true;
+    });
+
+    it("", async () => {
+      expect(true).true;
     });
   });
 });

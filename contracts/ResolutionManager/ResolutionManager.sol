@@ -62,12 +62,12 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         uint256 snapshotId;
         uint256 yesVotesTotal;
         bool isNegative;
-        mapping(address => bool) hasVoted;
-        mapping(address => bool) hasVotedYes;
-        mapping(address => uint256) lostVotingPower;
         // Transaction fields
         address[] executionTo;
         bytes[] executionData;
+        mapping(address => bool) hasVoted;
+        mapping(address => bool) hasVotedYes;
+        mapping(address => uint256) lostVotingPower;
     }
 
     mapping(uint256 => Resolution) public resolutions;
@@ -259,6 +259,16 @@ contract ResolutionManager is Initializable, Context, AccessControl {
             require(success, "Resolution: execution failed");
         }
         emit ResolutionExecuted(_msgSender(), resolutionId);
+    }
+
+    function getExecutionDetails(uint256 resolutionId)
+        public
+        view
+        returns (address[] memory, bytes[] memory)
+    {
+        Resolution storage resolution = resolutions[resolutionId];
+
+        return (resolution.executionTo, resolution.executionData);
     }
 
     function getVoterVote(uint256 resolutionId, address voter)
