@@ -18,7 +18,6 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { BigNumber, ContractReceipt } from "ethers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
 import { roles } from "./utils/roles";
-import { hexlify } from "ethers/lib/utils";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -1270,35 +1269,25 @@ describe("Resolution", () => {
           0,
           false,
           [resolutionExecutorMock.address, user2.address],
-          [hexlify(42), hexlify(43)]
+          [dataSimpleFunction(0), dataSimpleFunction(1)]
         );
 
       const result = await resolution.getExecutionDetails(1);
 
       expect(result[0][0]).equal(resolutionExecutorMock.address);
       expect(result[0][1]).equal(user2.address);
-      expect(result[1][0]).equal(hexlify(42));
-      expect(result[1][1]).equal(hexlify(43));
+      expect(result[1][0]).equal(dataSimpleFunction(0));
+      expect(result[1][1]).equal(dataSimpleFunction(1));
     });
 
     it("should execute a passed resolution with 1 executor", async () => {
       const data = dataSimpleFunction(42);
       await setupUser(user1, 50);
-      await setupResolution(
-        50,
-        false,
-        [resolutionExecutorMock.address],
-        [data]
-      );
+      await setupResolution(1, true, [resolutionExecutorMock.address], [data]);
       let approvalTimestamp = await getEVMTimestamp();
 
-      let votingTimestamp = approvalTimestamp + DAY * 3;
+      let votingTimestamp = approvalTimestamp + DAY * 5;
       await setEVMTimestamp(votingTimestamp);
-      await mineEVMBlock();
-
-      await resolution.connect(user1).vote(1, true);
-
-      await setEVMTimestamp(votingTimestamp + DAY * 2);
       await mineEVMBlock();
 
       await resolution.executeResolution(1);
@@ -1306,22 +1295,11 @@ describe("Resolution", () => {
 
     it("should pass the given single parameter to the executor", async () => {
       const data = dataSimpleFunction(42);
-      await setupUser(user1, 50);
-      await setupUser(user2, 1);
-      await setupResolution(
-        51,
-        false,
-        [resolutionExecutorMock.address],
-        [data]
-      );
+      await setupUser(user1, 1);
+      await setupResolution(1, true, [resolutionExecutorMock.address], [data]);
       let approvalTimestamp = await getEVMTimestamp();
 
-      let votingTimestamp = approvalTimestamp + DAY * 3;
-      await setEVMTimestamp(votingTimestamp);
-      await mineEVMBlock();
-
-      await resolution.connect(user1).vote(1, true);
-
+      let votingTimestamp = approvalTimestamp + DAY * 5;
       await setEVMTimestamp(votingTimestamp + DAY * 2);
       await mineEVMBlock();
 
@@ -1332,22 +1310,12 @@ describe("Resolution", () => {
 
     it("should pass the given list parameter to the executor", async () => {
       const data = dataArrayFunction([42, 43]);
-      await setupUser(user1, 50);
-      await setupResolution(
-        50,
-        false,
-        [resolutionExecutorMock.address],
-        [data]
-      );
+      await setupUser(user1, 1);
+      await setupResolution(1, true, [resolutionExecutorMock.address], [data]);
       let approvalTimestamp = await getEVMTimestamp();
 
-      let votingTimestamp = approvalTimestamp + DAY * 3;
+      let votingTimestamp = approvalTimestamp + DAY * 5;
       await setEVMTimestamp(votingTimestamp);
-      await mineEVMBlock();
-
-      await resolution.connect(user1).vote(1, true);
-
-      await setEVMTimestamp(votingTimestamp + DAY * 2);
       await mineEVMBlock();
 
       await expect(resolution.executeResolution(1))
@@ -1420,14 +1388,61 @@ describe("Resolution", () => {
       );
     });
 
-    it("should not execute a resolution that is not approved", async () => {});
+    it("should not execute a resolution that is not approved", async () => {
+      await resolution
+        .connect(user1)
+        .createResolution(
+          "test",
+          0,
+          false,
+          [resolutionExecutorMock.address],
+          [dataSimpleFunction(0)]
+        );
+
+      await expect(resolution.executeResolution(1)).revertedWith(
+        "Resolution: not approved"
+      );
+    });
 
     it("should not execute a resolution that didn't pass", async () => {
-      expect(true).true;
+      await setupUser(user1, 10);
+      await setupResolution(
+        50,
+        false,
+        [resolutionExecutorMock.address],
+        [dataSimpleFunction(0)]
+      );
+      let approvalTimestamp = await getEVMTimestamp();
+
+      let votingTimestamp = approvalTimestamp + DAY * 3;
+      await setEVMTimestamp(votingTimestamp);
+      await mineEVMBlock();
+
+      await resolution.connect(user1).vote(1, true);
+
+      await setEVMTimestamp(votingTimestamp + DAY * 2);
+      await mineEVMBlock();
+
+      await expect(resolution.executeResolution(1)).revertedWith(
+        "Resolution: not passed"
+      );
     });
 
     it("should not execute a resolution more than once", async () => {
-      expect(true).true;
+      const data = dataSimpleFunction(42);
+      await setupUser(user1, 1);
+      await setupResolution(1, true, [resolutionExecutorMock.address], [data]);
+      let approvalTimestamp = await getEVMTimestamp();
+
+      let votingTimestamp = approvalTimestamp + DAY * 5;
+      await setEVMTimestamp(votingTimestamp);
+      await mineEVMBlock();
+
+      await resolution.executeResolution(1);
+
+      await expect(resolution.executeResolution(1)).revertedWith(
+        "Resolution: already executed"
+      );
     });
   });
 });

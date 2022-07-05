@@ -65,6 +65,7 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         // Transaction fields
         address[] executionTo;
         bytes[] executionData;
+        uint256 executionTimestamp;
         mapping(address => bool) hasVoted;
         mapping(address => bool) hasVotedYes;
         mapping(address => uint256) lostVotingPower;
@@ -247,15 +248,22 @@ contract ResolutionManager is Initializable, Context, AccessControl {
             "Resolution: nothing to execute"
         );
         require(resolution.approveTimestamp > 0, "Resolution: not approved");
+        require(
+            resolution.executionTimestamp == 0,
+            "Resolution: already executed"
+        );
 
         (, uint256 votingEnd) = _votingWindow(resolution);
 
         require(block.timestamp >= votingEnd, "Resolution: not ended");
 
-        require(getResolutionResult(resolutionId), "Resolution: not passed.");
+        require(getResolutionResult(resolutionId), "Resolution: not passed");
 
         address[] memory to = resolution.executionTo;
         bytes[] memory data = resolution.executionData;
+
+        // Set timestamp before execution as a re-entrancy guard.
+        resolution.executionTimestamp = block.timestamp;
 
         for (uint256 i; i < to.length; i++) {
             (bool success, ) = to[i].call(data[i]);
