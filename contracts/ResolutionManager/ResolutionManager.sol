@@ -166,6 +166,10 @@ contract ResolutionManager is Initializable, Context, AccessControl {
             !isNegative || resolutionType.canBeNegative,
             "Resolution: cannot be negative"
         );
+        require(
+            executionTo.length == executionData.length,
+            "Resolution: length mismatch"
+        );
         uint256 resolutionId = _currentResolutionId++;
         Resolution storage resolution = resolutions[resolutionId];
 
@@ -211,6 +215,10 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         bytes[] memory executionData
     ) public virtual {
         Resolution storage resolution = resolutions[resolutionId];
+        require(
+            executionTo.length == executionData.length,
+            "Resolution: length mismatch"
+        );
         require(
             resolution.approveTimestamp == 0,
             "Resolution: already approved"

@@ -220,6 +220,20 @@ describe("Resolution", () => {
         resolution.connect(user1).createResolution("test", 0, true, [], [])
       ).revertedWith("Resolution: cannot be negative");
     });
+
+    it("doesn't allow to create a resolution with mismatching length between executor and data", async () => {
+      await expect(
+        resolution
+          .connect(user1)
+          .createResolution(
+            "test",
+            0,
+            false,
+            [resolutionExecutorMock.address],
+            []
+          )
+      ).revertedWith("Resolution: length mismatch");
+    });
   });
 
   describe("update logic", async () => {
@@ -285,6 +299,21 @@ describe("Resolution", () => {
           .connect(user1)
           .updateResolution(resolutionId, "updated test", 6, true, [], [])
       ).revertedWith("Resolution: only managing board can update");
+    });
+
+    it("doesn't allow to update a resolution with mismatching length between executor and data", async () => {
+      await expect(
+        resolution
+          .connect(user1)
+          .updateResolution(
+            resolutionId,
+            "updated test",
+            6,
+            true,
+            [resolutionExecutorMock.address],
+            []
+          )
+      ).revertedWith("Resolution: length mismatch");
     });
   });
 
@@ -1407,20 +1436,15 @@ describe("Resolution", () => {
     it("should not execute a resolution that didn't pass", async () => {
       await setupUser(user1, 10);
       await setupResolution(
-        50,
+        1,
         false,
         [resolutionExecutorMock.address],
         [dataSimpleFunction(0)]
       );
       let approvalTimestamp = await getEVMTimestamp();
 
-      let votingTimestamp = approvalTimestamp + DAY * 3;
+      let votingTimestamp = approvalTimestamp + DAY * 5;
       await setEVMTimestamp(votingTimestamp);
-      await mineEVMBlock();
-
-      await resolution.connect(user1).vote(1, true);
-
-      await setEVMTimestamp(votingTimestamp + DAY * 2);
       await mineEVMBlock();
 
       await expect(resolution.executeResolution(1)).revertedWith(
