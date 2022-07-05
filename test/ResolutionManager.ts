@@ -1246,6 +1246,22 @@ describe("Resolution", () => {
   });
 
   describe("resolution execution", async () => {
+    function dataSimpleFunction(param: number) {
+      const abi = ["function mockExecuteSimple(uint256 a)"];
+      const iface = new ethers.utils.Interface(abi);
+      const data = iface.encodeFunctionData("mockExecuteSimple", [param]);
+
+      return data;
+    }
+
+    function dataArrayFunction(param: number[]) {
+      const abi = ["function mockExecuteArray(uint256[] memory a)"];
+      const iface = new ethers.utils.Interface(abi);
+      const data = iface.encodeFunctionData("mockExecuteArray", [param]);
+
+      return data;
+    }
+
     it("should create a resolution with multiple executors", async () => {
       await resolution
         .connect(user1)
@@ -1266,13 +1282,10 @@ describe("Resolution", () => {
     });
 
     it("should execute a passed resolution with 1 executor", async () => {
-      const abi = ["function mockExecuteSimple(uint256 a)"];
-      const iface = new ethers.utils.Interface(abi);
-      const data = iface.encodeFunctionData("mockExecuteSimple", [42]);
+      const data = dataSimpleFunction(42);
       await setupUser(user1, 50);
-      await setupUser(user2, 1);
       await setupResolution(
-        51,
+        50,
         false,
         [resolutionExecutorMock.address],
         [data]
@@ -1292,9 +1305,7 @@ describe("Resolution", () => {
     });
 
     it("should pass the given single parameter to the executor", async () => {
-      const abi = ["function mockExecuteSimple(uint256 a)"];
-      const iface = new ethers.utils.Interface(abi);
-      const data = iface.encodeFunctionData("mockExecuteSimple", [42]);
+      const data = dataSimpleFunction(42);
       await setupUser(user1, 50);
       await setupUser(user2, 1);
       await setupResolution(
@@ -1320,13 +1331,10 @@ describe("Resolution", () => {
     });
 
     it("should pass the given list parameter to the executor", async () => {
-      const abi = ["function mockExecuteArray(uint256[] memory a)"];
-      const iface = new ethers.utils.Interface(abi);
-      const data = iface.encodeFunctionData("mockExecuteArray", [[42, 43]]);
+      const data = dataArrayFunction([42, 43]);
       await setupUser(user1, 50);
-      await setupUser(user2, 1);
       await setupResolution(
-        51,
+        50,
         false,
         [resolutionExecutorMock.address],
         [data]
@@ -1367,22 +1375,58 @@ describe("Resolution", () => {
     });
 
     it("should execute a passed resolution with multiple executors", async () => {
-      expect(true).true;
+      const data1 = dataSimpleFunction(42);
+      const data2 = dataSimpleFunction(43);
+      await setupUser(user1, 50);
+      await setupResolution(
+        1,
+        false,
+        [resolutionExecutorMock.address, resolutionExecutorMock.address],
+        [data1, data2]
+      );
+      let approvalTimestamp = await getEVMTimestamp();
+
+      let votingTimestamp = approvalTimestamp + DAY * 3;
+      await setEVMTimestamp(votingTimestamp);
+      await mineEVMBlock();
+
+      await resolution.connect(user1).vote(1, true);
+
+      await setEVMTimestamp(votingTimestamp + DAY * 2);
+      await mineEVMBlock();
+
+      await expect(resolution.executeResolution(1))
+        .to.emit(resolutionExecutorMock, "MockExecutionSimple")
+        .withArgs(42)
+        .to.emit(resolutionExecutorMock, "MockExecutionSimple")
+        .withArgs(43);
     });
 
     it("should not execute a resolution that is not ended", async () => {
-      expect(true).true;
+      await setupResolution(
+        1,
+        false,
+        [resolutionExecutorMock.address],
+        [dataSimpleFunction(0)]
+      );
+      let approvalTimestamp = await getEVMTimestamp();
+
+      let votingTimestamp = approvalTimestamp + DAY * 3;
+      await setEVMTimestamp(votingTimestamp);
+      await mineEVMBlock();
+
+      await expect(resolution.executeResolution(1)).revertedWith(
+        "Resolution: not ended"
+      );
     });
 
-    it("should not execute a resolution that is not approved", async () => {
+    it("should not execute a resolution that is not approved", async () => {});
+
+    it("should not execute a resolution that didn't pass", async () => {
       expect(true).true;
     });
 
     it("should not execute a resolution more than once", async () => {
-      expect(true).true;
-    });
-
-    it("", async () => {
       expect(true).true;
     });
   });
