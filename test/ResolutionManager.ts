@@ -295,10 +295,11 @@ describe("Resolution", () => {
     });
   });
 
-  describe("resolution type addition", async () => {
-    it("should allow a operator to add a resolution type", async () => {
+  describe("resolution type management", async () => {
+    it("should allow a resolution to add a resolution type", async () => {
+      await resolution.grantRole(await roles.RESOLUTION_ROLE(), user1.address);
       await resolution
-        .connect(deployer)
+        .connect(user1)
         .addResolutionType("test", 42, 43, 44, false);
 
       const result = await resolution.resolutionTypes(7);
@@ -326,13 +327,6 @@ describe("Resolution", () => {
       ).revertedWith(
         `AccessControl: account ${user1.address.toLowerCase()} is missing role ${await roles.RESOLUTION_ROLE()}`
       );
-    });
-
-    it("should allow a resolution to add a resolution type", async () => {
-      await resolution.grantRole(await roles.RESOLUTION_ROLE(), user1.address);
-      await resolution
-        .connect(user1)
-        .addResolutionType("test", 42, 43, 44, false);
     });
   });
 
