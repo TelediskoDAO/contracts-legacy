@@ -1,158 +1,183 @@
-import { keccak256, toUtf8Bytes } from "ethers/lib/utils";
 import { task } from "hardhat/config";
 import {
   Voting,
   ResolutionManager,
   ShareholderRegistry,
   TelediskoToken,
-  ResolutionManager__factory,
-  ShareholderRegistry__factory,
-  TelediskoToken__factory,
-  Voting__factory,
 } from "../typechain";
 import { exportAddress, ROLES } from "./config";
+import { deployProxy } from "./gasMonkeyPatch";
 
-task("deploy", "Deploy DAO", async (_, hre) => {
-  const [deployer] = await hre.ethers.getSigners();
+task("deploy", "Deploy DAO")
+  .addParam("adminAddress", "Address of the admin")
+  .setAction(async ({ adminAddress }: { adminAddress: string }, hre) => {
+    let [deployer] = await hre.ethers.getSigners();
 
-  const resolutionManagerFactory = (await hre.ethers.getContractFactory(
-    "ResolutionManager"
-  )) as ResolutionManager__factory;
-  const votingFactory = (await hre.ethers.getContractFactory(
-    "Voting"
-  )) as Voting__factory;
-  const shareholderRegistryFactory = (await hre.ethers.getContractFactory(
-    "ShareholderRegistry"
-  )) as ShareholderRegistry__factory;
-  const telediskoTokenFactory = (await hre.ethers.getContractFactory(
-    "TelediskoToken"
-  )) as TelediskoToken__factory;
+    //const fee = await deployer.provider!.getFeeData();
+    //console.log("Gas fee", formatUnits(fee.maxFeePerGas!, "gwei"));
 
-  console.log("Deploy DAO");
-  console.log("  Network:", hre.network.name);
+    console.log("Deploy DAO");
+    console.log("  Network:", hre.network.name);
 
-  console.log("  Deploy Voting.sol");
-  const votingContract = (await hre.upgrades.deployProxy(votingFactory, {
-    initializer: "initialize",
-  })) as Voting;
-  await votingContract.deployed();
-  console.log("    Address:", votingContract.address);
+    const votingContract = (await deployProxy(hre, "Voting")) as Voting;
 
-  console.log("  Deploy ShareholderRegistry.sol");
-  const shareholderRegistryContract = (await hre.upgrades.deployProxy(
-    shareholderRegistryFactory,
-    ["Teledisko Share", "TS"],
-    {
-      initializer: "initialize",
-    }
-  )) as ShareholderRegistry;
-  await shareholderRegistryContract.deployed();
-  console.log("    Address:", shareholderRegistryContract.address);
+    const shareholderRegistryContract = (await deployProxy(
+      hre,
+      "ShareholderRegistry",
+      ["Teledisko Share", "TS"]
+    )) as ShareholderRegistry;
 
-  console.log("  Deploy TelediskoToken.sol");
-  const telediskoTokenContract = (await hre.upgrades.deployProxy(
-    telediskoTokenFactory,
-    ["Teledisko Token", "TT"],
-    { initializer: "initialize" }
-  )) as TelediskoToken;
-  await telediskoTokenContract.deployed();
-  console.log("    Address:", telediskoTokenContract.address);
+    const telediskoTokenContract = (await deployProxy(hre, "TelediskoToken", [
+      "Teledisko Token",
+      "TT",
+    ])) as TelediskoToken;
 
-  console.log("  Deploy ResolutionManager.sol");
-  const resolutionManagerContract = (await hre.upgrades.deployProxy(
-    resolutionManagerFactory,
-    [
-      shareholderRegistryContract.address,
-      telediskoTokenContract.address,
-      votingContract.address,
-    ],
-    {
-      initializer: "initialize",
-    }
-  )) as ResolutionManager;
-  await resolutionManagerContract.deployed();
-  console.log("    Address:", resolutionManagerContract.address);
+    const resolutionManagerContract = (await deployProxy(
+      hre,
+      "ResolutionManager",
+      [
+        shareholderRegistryContract.address,
+        telediskoTokenContract.address,
+        votingContract.address,
+      ]
+    )) as ResolutionManager;
 
-  console.log("  Grant roles");
-  console.log("    🏅 Grant roles for ResolutionManager");
-  await resolutionManagerContract.grantRole(
-    ROLES.RESOLUTION_ROLE,
-    resolutionManagerContract.address
-  );
-  await resolutionManagerContract.grantRole(
-    ROLES.RESOLUTION_ROLE,
-    deployer.address
-  );
-  await resolutionManagerContract.grantRole(
-    ROLES.OPERATOR_ROLE,
-    deployer.address
-  );
+    await exportAddress(hre, resolutionManagerContract, "ResolutionManager");
+    await exportAddress(hre, telediskoTokenContract, "TelediskoToken");
+    await exportAddress(
+      hre,
+      shareholderRegistryContract,
+      "ShareholderRegistry"
+    );
+    await exportAddress(hre, votingContract, "Voting");
 
-  console.log("    🏅 Grant roles for Voting");
-  await votingContract.grantRole(
-    ROLES.RESOLUTION_ROLE,
-    resolutionManagerContract.address
-  );
+    console.log("  Grant roles");
 
-  await votingContract.grantRole(
-    ROLES.SHAREHOLDER_REGISTRY_ROLE,
-    shareholderRegistryContract.address
-  );
-  await votingContract.grantRole(ROLES.OPERATOR_ROLE, deployer.address);
-  await votingContract.grantRole(ROLES.RESOLUTION_ROLE, deployer.address);
+    console.log("    🏅 Grant roles for ResolutionManager");
+    await resolutionManagerContract.grantRole(
+      ROLES.RESOLUTION_ROLE,
+      resolutionManagerContract.address
+    );
+    await resolutionManagerContract.grantRole(
+      ROLES.OPERATOR_ROLE,
+      deployer.address
+    );
 
-  console.log("    🏅 Grant roles for ShareholderRegistry");
-  await shareholderRegistryContract.grantRole(
-    ROLES.OPERATOR_ROLE,
-    deployer.address
-  );
-  await shareholderRegistryContract.grantRole(
-    ROLES.RESOLUTION_ROLE,
-    deployer.address
-  );
-  await shareholderRegistryContract.grantRole(
-    ROLES.RESOLUTION_ROLE,
-    resolutionManagerContract.address
-  );
+    console.log("    🏅 Grant roles for Voting");
+    await votingContract.grantRole(
+      ROLES.RESOLUTION_ROLE,
+      resolutionManagerContract.address
+    );
+    await votingContract.grantRole(
+      ROLES.SHAREHOLDER_REGISTRY_ROLE,
+      shareholderRegistryContract.address
+    );
+    await votingContract.grantRole(ROLES.OPERATOR_ROLE, deployer.address);
 
-  console.log("    🏅 Grant roles for TelediskoToken");
-  await telediskoTokenContract.grantRole(ROLES.OPERATOR_ROLE, deployer.address);
-  await telediskoTokenContract.grantRole(ROLES.ESCROW_ROLE, deployer.address);
-  await telediskoTokenContract.grantRole(
-    ROLES.RESOLUTION_ROLE,
-    deployer.address
-  );
-  const txGranting = await telediskoTokenContract.grantRole(
-    ROLES.RESOLUTION_ROLE,
-    resolutionManagerContract.address
-  );
-  await txGranting.wait();
+    console.log("    🏅 Grant roles for ShareholderRegistry");
+    await shareholderRegistryContract.grantRole(
+      ROLES.RESOLUTION_ROLE,
+      resolutionManagerContract.address
+    );
+    await shareholderRegistryContract.grantRole(
+      ROLES.OPERATOR_ROLE,
+      deployer.address
+    );
 
-  console.log("  Connect contracts");
-  console.log("    Voting 🤝 ShareholderRegistry");
-  let tx = await votingContract.setShareholderRegistry(
-    shareholderRegistryContract.address
-  );
-  await tx.wait(1);
-  console.log("    Voting 🤝 TelediskoToken");
-  tx = await votingContract.setToken(telediskoTokenContract.address);
-  await tx.wait(1);
+    console.log("    🏅 Grant roles for TelediskoToken");
+    await telediskoTokenContract.grantRole(
+      ROLES.RESOLUTION_ROLE,
+      resolutionManagerContract.address
+    );
+    await telediskoTokenContract.grantRole(
+      ROLES.OPERATOR_ROLE,
+      deployer.address
+    );
 
-  console.log("    TelediskoToken 🤝 ShareholderRegistry");
-  tx = await telediskoTokenContract.setShareholderRegistry(
-    shareholderRegistryContract.address
-  );
-  await tx.wait(1);
-  console.log("    TelediskoToken 🤝 Voting");
-  tx = await telediskoTokenContract.setVoting(votingContract.address);
-  await tx.wait(1);
+    console.log("  Connect contracts");
+    console.log("    Voting 🤝 ShareholderRegistry");
+    await votingContract.setShareholderRegistry(
+      shareholderRegistryContract.address
+    );
+    console.log("    Voting 🤝 TelediskoToken");
+    await votingContract.setToken(telediskoTokenContract.address);
 
-  console.log("    ShareholderRegistry 🤝 Voting");
-  tx = await shareholderRegistryContract.setVoting(votingContract.address);
-  await tx.wait(1);
+    console.log("    TelediskoToken 🤝 ShareholderRegistry");
+    await telediskoTokenContract.setShareholderRegistry(
+      shareholderRegistryContract.address
+    );
+    console.log("    TelediskoToken 🤝 Voting");
+    await telediskoTokenContract.setVoting(votingContract.address);
 
-  await exportAddress(hre, resolutionManagerContract, "ResolutionManager");
-  await exportAddress(hre, telediskoTokenContract, "TelediskoToken");
-  await exportAddress(hre, shareholderRegistryContract, "ShareholderRegistry");
-  await exportAddress(hre, votingContract, "Voting");
-});
+    console.log("    ShareholderRegistry 🤝 Voting");
+    await shareholderRegistryContract.setVoting(votingContract.address);
+
+    console.log("  Grant admin roles");
+    await resolutionManagerContract.grantRole(
+      ROLES.DEFAULT_ADMIN_ROLE,
+      adminAddress
+    );
+    await resolutionManagerContract.grantRole(
+      ROLES.RESOLUTION_ROLE,
+      adminAddress
+    );
+    await resolutionManagerContract.grantRole(
+      ROLES.OPERATOR_ROLE,
+      adminAddress
+    );
+    await resolutionManagerContract.renounceRole(
+      ROLES.OPERATOR_ROLE,
+      deployer.address
+    );
+    await resolutionManagerContract.renounceRole(
+      ROLES.DEFAULT_ADMIN_ROLE,
+      deployer.address
+    );
+
+    await votingContract.grantRole(ROLES.DEFAULT_ADMIN_ROLE, adminAddress);
+    await votingContract.grantRole(ROLES.RESOLUTION_ROLE, adminAddress);
+    await votingContract.grantRole(ROLES.OPERATOR_ROLE, adminAddress);
+    await votingContract.renounceRole(ROLES.OPERATOR_ROLE, deployer.address);
+    await votingContract.renounceRole(
+      ROLES.DEFAULT_ADMIN_ROLE,
+      deployer.address
+    );
+
+    await shareholderRegistryContract.grantRole(
+      ROLES.DEFAULT_ADMIN_ROLE,
+      adminAddress
+    );
+    await shareholderRegistryContract.grantRole(
+      ROLES.RESOLUTION_ROLE,
+      adminAddress
+    );
+    await shareholderRegistryContract.grantRole(
+      ROLES.OPERATOR_ROLE,
+      adminAddress
+    );
+    await shareholderRegistryContract.renounceRole(
+      ROLES.OPERATOR_ROLE,
+      deployer.address
+    );
+    await shareholderRegistryContract.renounceRole(
+      ROLES.DEFAULT_ADMIN_ROLE,
+      deployer.address
+    );
+
+    await telediskoTokenContract.grantRole(
+      ROLES.DEFAULT_ADMIN_ROLE,
+      adminAddress
+    );
+    await telediskoTokenContract.grantRole(ROLES.OPERATOR_ROLE, adminAddress);
+    await telediskoTokenContract.grantRole(ROLES.ESCROW_ROLE, adminAddress);
+    await telediskoTokenContract.grantRole(ROLES.RESOLUTION_ROLE, adminAddress);
+    await telediskoTokenContract.renounceRole(
+      ROLES.OPERATOR_ROLE,
+      deployer.address
+    );
+    const finalTx = await telediskoTokenContract.renounceRole(
+      ROLES.DEFAULT_ADMIN_ROLE,
+      deployer.address
+    );
+    await finalTx.wait(1);
+  });
