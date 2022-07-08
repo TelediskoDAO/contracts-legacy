@@ -201,50 +201,52 @@ task("deploy", "Deploy DAO")
     /**
      * Remove roles to deployer
      */
-    console.log("\n\n💀  Remove roles");
-    console.log("  ResolutionManager");
-    console.log("    Remove OPERATOR_ROLE to deployer");
-    await resolutionManagerContract.renounceRole(
-      ROLES.OPERATOR_ROLE,
-      deployer.address
-    );
-    console.log("    Remove DEFAULT_ADMIN_ROLE to deployer");
-    await resolutionManagerContract.renounceRole(
-      ROLES.DEFAULT_ADMIN_ROLE,
-      deployer.address
-    );
+    if (deployer.address.toLowerCase() != adminAddress.toLowerCase()) {
+      console.log("\n\n💀  Remove roles");
+      console.log("  ResolutionManager");
+      console.log("    Remove OPERATOR_ROLE to deployer");
+      await resolutionManagerContract.renounceRole(
+        ROLES.OPERATOR_ROLE,
+        deployer.address
+      );
+      console.log("    Remove DEFAULT_ADMIN_ROLE to deployer");
+      await resolutionManagerContract.renounceRole(
+        ROLES.DEFAULT_ADMIN_ROLE,
+        deployer.address
+      );
 
-    console.log("  Voting");
-    console.log("    Remove OPERATOR_ROLE to deployer");
-    await votingContract.renounceRole(ROLES.OPERATOR_ROLE, deployer.address);
-    console.log("    Remove DEFAULT_ADMIN_ROLE to deployer");
-    await votingContract.renounceRole(
-      ROLES.DEFAULT_ADMIN_ROLE,
-      deployer.address
-    );
+      console.log("  Voting");
+      console.log("    Remove OPERATOR_ROLE to deployer");
+      await votingContract.renounceRole(ROLES.OPERATOR_ROLE, deployer.address);
+      console.log("    Remove DEFAULT_ADMIN_ROLE to deployer");
+      await votingContract.renounceRole(
+        ROLES.DEFAULT_ADMIN_ROLE,
+        deployer.address
+      );
 
-    console.log("    Remove OPERATOR_ROLE to deployer");
-    await shareholderRegistryContract.renounceRole(
-      ROLES.OPERATOR_ROLE,
-      deployer.address
-    );
-    console.log("    Remove DEFAULT_ADMIN_ROLE to deployer");
-    await shareholderRegistryContract.renounceRole(
-      ROLES.DEFAULT_ADMIN_ROLE,
-      deployer.address
-    );
+      console.log("    Remove OPERATOR_ROLE to deployer");
+      await shareholderRegistryContract.renounceRole(
+        ROLES.OPERATOR_ROLE,
+        deployer.address
+      );
+      console.log("    Remove DEFAULT_ADMIN_ROLE to deployer");
+      await shareholderRegistryContract.renounceRole(
+        ROLES.DEFAULT_ADMIN_ROLE,
+        deployer.address
+      );
 
-    console.log("  TelediskoToken");
-    console.log("    Remove OPERATOR_ROLE to deployer");
-    await telediskoTokenContract.renounceRole(
-      ROLES.OPERATOR_ROLE,
-      deployer.address
-    );
-    console.log("    Remove DEFAULT_ADMIN_ROLE to deployer");
-    tx = await telediskoTokenContract.renounceRole(
-      ROLES.DEFAULT_ADMIN_ROLE,
-      deployer.address
-    );
+      console.log("  TelediskoToken");
+      console.log("    Remove OPERATOR_ROLE to deployer");
+      await telediskoTokenContract.renounceRole(
+        ROLES.OPERATOR_ROLE,
+        deployer.address
+      );
+      console.log("    Remove DEFAULT_ADMIN_ROLE to deployer");
+      tx = await telediskoTokenContract.renounceRole(
+        ROLES.DEFAULT_ADMIN_ROLE,
+        deployer.address
+      );
+    }
     await tx.wait(1);
 
     console.log("\n\nWell done 🐯 enjoy your DAO!");
