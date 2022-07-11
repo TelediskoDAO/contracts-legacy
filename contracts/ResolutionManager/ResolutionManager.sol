@@ -24,6 +24,10 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         address indexed from,
         uint256 indexed resolutionId
     );
+    event ResolutionRejected(
+        address indexed from,
+        uint256 indexed resolutionId
+    );
     event ResolutionVoted(
         address indexed from,
         uint256 indexed resolutionId,
@@ -59,6 +63,7 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         string dataURI;
         uint256 resolutionTypeId;
         uint256 approveTimestamp;
+        uint256 rejectionTimestamp;
         uint256 snapshotId;
         uint256 yesVotesTotal;
         bool isNegative;
@@ -199,12 +204,35 @@ contract ResolutionManager is Initializable, Context, AccessControl {
 
         Resolution storage resolution = resolutions[resolutionId];
         require(
-            resolution.approveTimestamp == 0,
-            "Resolution: already approved"
+            resolution.approveTimestamp + resolution.rejectionTimestamp == 0,
+            "Resolution: resolution not pending"
         );
         resolution.approveTimestamp = block.timestamp;
         resolution.snapshotId = _snapshotAll();
         emit ResolutionApproved(_msgSender(), resolutionId);
+    }
+
+    function rejectResolution(uint256 resolutionId) public virtual {
+        require(
+            _shareholderRegistry.isAtLeast(
+                _shareholderRegistry.MANAGING_BOARD_STATUS(),
+                _msgSender()
+            ),
+            "Resolution: only managing board can reject"
+        );
+        require(
+            resolutionId < _currentResolutionId,
+            "Resolution: does not exist"
+        );
+
+        Resolution storage resolution = resolutions[resolutionId];
+        require(
+            resolution.approveTimestamp + resolution.rejectionTimestamp == 0,
+            "Resolution: resolution not pending"
+        );
+
+        resolution.rejectionTimestamp = block.timestamp;
+        emit ResolutionRejected(_msgSender(), resolutionId);
     }
 
     function updateResolution(
@@ -221,8 +249,9 @@ contract ResolutionManager is Initializable, Context, AccessControl {
             "Resolution: length mismatch"
         );
         require(
-            resolution.approveTimestamp == 0,
-            "Resolution: already approved"
+            resolution.approveTimestamp == 0 &&
+                resolution.rejectionTimestamp == 0,
+            "Resolution: resolution not pending"
         );
 
         require(
