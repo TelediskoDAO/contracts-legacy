@@ -144,8 +144,9 @@ describe("Shareholder Registry", () => {
       await registry.mint(alice.address, parseEther("1"));
       await registry.setStatus(CONTRIBUTOR_STATUS, alice.address);
       expect(await registry.getStatus(alice.address)).equal(CONTRIBUTOR_STATUS);
+      await registry.connect(alice).approve(operator.address, parseEther("1"));
       await expect(
-        registry.connect(alice).transfer(registry.address, parseEther("1"))
+        registry.transferFrom(alice.address, registry.address, parseEther("1"))
       )
         .to.emit(voting, "BeforeRemoveContributor")
         .withArgs(alice.address);
@@ -194,7 +195,12 @@ describe("Shareholder Registry", () => {
       await registry.mint(alice.address, parseEther("1"));
       await registry.setStatus(CONTRIBUTOR_STATUS, alice.address);
       expect(await registry.getStatus(alice.address)).equal(CONTRIBUTOR_STATUS);
-      await registry.connect(alice).transfer(registry.address, parseEther("1"));
+      await registry.connect(alice).approve(operator.address, parseEther("1"));
+      await registry.transferFrom(
+        alice.address,
+        registry.address,
+        parseEther("1")
+      );
       expect(await registry.getStatus(alice.address)).equal(Bytes32Zero);
     });
   });
@@ -301,7 +307,7 @@ describe("Shareholder Registry", () => {
         expect(totalSupplyAfter).equal(totalSupplyBefore.sub(parseEther("1")));
       });
 
-      it("does not allows anyone not RESOLUTION_ROLE to not be able to burn shares", async () => {
+      it("does not allow everyone without RESOLUTION_ROLE to burn shares", async () => {
         await expect(
           registry.connect(bob).burn(registry.address, 4)
         ).revertedWith(
@@ -452,18 +458,24 @@ describe("Shareholder Registry", () => {
     it("allow transfering DAO shares to multiple addresses", async () => {
       await registry.mint(registry.address, parseEther("20"));
 
-      await expect(
-        registry.transferFromDAOBatch([
-          alice.address,
-          bob.address,
-          managingBoard.address,
-        ])
-      );
+      await registry.transferFromDAOBatch([
+        alice.address,
+        bob.address,
+        managingBoard.address,
+      ]);
 
       expect(await registry.balanceOf(alice.address)).equal(parseEther("1"));
       expect(await registry.balanceOf(bob.address)).equal(parseEther("1"));
       expect(await registry.balanceOf(managingBoard.address)).equal(
         parseEther("1")
+      );
+    });
+
+    it("should not allow anyone without RESOLUTION_ROLE to transferFromDAOBatch", async () => {
+      await expect(
+        registry.connect(alice).transferFromDAOBatch([])
+      ).revertedWith(
+        `AccessControl: account ${alice.address.toLowerCase()} is missing role ${RESOLUTION_ROLE.toLowerCase()}`
       );
     });
   });
@@ -512,6 +524,24 @@ describe("Shareholder Registry", () => {
       await expect(
         registry.mint(registry.address, parseEther("2.5"))
       ).revertedWith("No fractional tokens");
+    });
+
+    it("should not allow anyone without RESOLUTION_ROLE to transfer shares", async () => {
+      await expect(
+        registry.connect(alice).transfer(bob.address, parseEther("1"))
+      ).revertedWith(
+        `AccessControl: account ${alice.address.toLowerCase()} is missing role ${RESOLUTION_ROLE.toLowerCase()}`
+      );
+    });
+
+    it("should not allow anyone without RESOLUTION_ROLE to transferFrom shares", async () => {
+      await expect(
+        registry
+          .connect(alice)
+          .transferFrom(alice.address, bob.address, parseEther("1"))
+      ).revertedWith(
+        `AccessControl: account ${alice.address.toLowerCase()} is missing role ${RESOLUTION_ROLE.toLowerCase()}`
+      );
     });
   });
 });
