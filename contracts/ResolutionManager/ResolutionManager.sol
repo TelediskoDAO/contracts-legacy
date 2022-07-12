@@ -63,10 +63,10 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         string dataURI;
         uint256 resolutionTypeId;
         uint256 approveTimestamp;
-        uint256 rejectionTimestamp;
         uint256 snapshotId;
         uint256 yesVotesTotal;
         bool isNegative;
+        uint256 rejectionTimestamp;
         // Transaction fields
         address[] executionTo;
         bytes[] executionData;
@@ -104,6 +104,20 @@ contract ResolutionManager is Initializable, Context, AccessControl {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
+
+    modifier onlyPending(uint256 resolutionId) {
+        Resolution storage resolution = resolutions[resolutionId];
+        require(
+            resolution.approveTimestamp == 0,
+            "Resolution: already approved"
+        );
+        require(
+            resolution.rejectionTimestamp == 0,
+            "Resolution: already rejected"
+        );
+
+        _;
+    }
 
     function addResolutionType(
         string memory name,
@@ -189,7 +203,11 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         return resolutionId;
     }
 
-    function approveResolution(uint256 resolutionId) public virtual {
+    function approveResolution(uint256 resolutionId)
+        public
+        virtual
+        onlyPending(resolutionId)
+    {
         require(
             _shareholderRegistry.isAtLeast(
                 _shareholderRegistry.MANAGING_BOARD_STATUS(),
@@ -203,16 +221,16 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         );
 
         Resolution storage resolution = resolutions[resolutionId];
-        require(
-            resolution.approveTimestamp + resolution.rejectionTimestamp == 0,
-            "Resolution: resolution not pending"
-        );
         resolution.approveTimestamp = block.timestamp;
         resolution.snapshotId = _snapshotAll();
         emit ResolutionApproved(_msgSender(), resolutionId);
     }
 
-    function rejectResolution(uint256 resolutionId) public virtual {
+    function rejectResolution(uint256 resolutionId)
+        public
+        virtual
+        onlyPending(resolutionId)
+    {
         require(
             _shareholderRegistry.isAtLeast(
                 _shareholderRegistry.MANAGING_BOARD_STATUS(),
@@ -226,10 +244,6 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         );
 
         Resolution storage resolution = resolutions[resolutionId];
-        require(
-            resolution.approveTimestamp + resolution.rejectionTimestamp == 0,
-            "Resolution: resolution not pending"
-        );
 
         resolution.rejectionTimestamp = block.timestamp;
         emit ResolutionRejected(_msgSender(), resolutionId);
@@ -242,16 +256,11 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         bool isNegative,
         address[] memory executionTo,
         bytes[] memory executionData
-    ) public virtual {
+    ) public virtual onlyPending(resolutionId) {
         Resolution storage resolution = resolutions[resolutionId];
         require(
             executionTo.length == executionData.length,
             "Resolution: length mismatch"
-        );
-        require(
-            resolution.approveTimestamp == 0 &&
-                resolution.rejectionTimestamp == 0,
-            "Resolution: resolution not pending"
         );
 
         require(
