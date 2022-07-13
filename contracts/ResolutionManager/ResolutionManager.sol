@@ -119,6 +119,15 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         _;
     }
 
+    modifier exists(uint256 resolutionId) {
+        require(
+            resolutionId < _currentResolutionId,
+            "Resolution: does not exist"
+        );
+
+        _;
+    }
+
     function addResolutionType(
         string memory name,
         uint256 quorum,
@@ -207,6 +216,7 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         public
         virtual
         onlyPending(resolutionId)
+        exists(resolutionId)
     {
         require(
             _shareholderRegistry.isAtLeast(
@@ -214,10 +224,6 @@ contract ResolutionManager is Initializable, Context, AccessControl {
                 _msgSender()
             ),
             "Resolution: only managing board can approve"
-        );
-        require(
-            resolutionId < _currentResolutionId,
-            "Resolution: does not exist"
         );
 
         Resolution storage resolution = resolutions[resolutionId];
@@ -230,6 +236,7 @@ contract ResolutionManager is Initializable, Context, AccessControl {
         public
         virtual
         onlyPending(resolutionId)
+        exists(resolutionId)
     {
         require(
             _shareholderRegistry.isAtLeast(
@@ -237,10 +244,6 @@ contract ResolutionManager is Initializable, Context, AccessControl {
                 _msgSender()
             ),
             "Resolution: only managing board can reject"
-        );
-        require(
-            resolutionId < _currentResolutionId,
-            "Resolution: does not exist"
         );
 
         Resolution storage resolution = resolutions[resolutionId];
