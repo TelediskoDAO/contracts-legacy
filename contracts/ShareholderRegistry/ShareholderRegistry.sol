@@ -85,16 +85,16 @@ contract ShareholderRegistry is
         address to,
         uint256 amount
     ) public virtual override onlyRole(Roles.RESOLUTION_ROLE) returns (bool) {
-        return super.transferFrom(from, to, amount);
+        _transfer(from, to, amount);
+        return true;
     }
 
     function transfer(address to, uint256 amount)
         public
         virtual
         override
-        onlyRole(Roles.RESOLUTION_ROLE)
         returns (bool)
     {
-        return super.transfer(to, amount);
+        require(false, "ShareholderRegistry: transfer disabled");
     }
 }

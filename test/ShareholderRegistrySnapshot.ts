@@ -11,6 +11,7 @@ import {
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { parseEther } from "ethers/lib/utils";
 import { roles } from "./utils/roles";
+import { shareholderRegistry } from "../typechain/contracts";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -145,7 +146,7 @@ describe("Shareholder Registry", () => {
       await registry.setStatus(CONTRIBUTOR_STATUS, alice.address);
       expect(await registry.getStatus(alice.address)).equal(CONTRIBUTOR_STATUS);
       await expect(
-        registry.connect(alice).transfer(registry.address, parseEther("1"))
+        registry.transferFrom(alice.address, registry.address, parseEther("1"))
       )
         .to.emit(voting, "BeforeRemoveContributor")
         .withArgs(alice.address);
@@ -194,7 +195,11 @@ describe("Shareholder Registry", () => {
       await registry.mint(alice.address, parseEther("1"));
       await registry.setStatus(CONTRIBUTOR_STATUS, alice.address);
       expect(await registry.getStatus(alice.address)).equal(CONTRIBUTOR_STATUS);
-      await registry.connect(alice).transfer(registry.address, parseEther("1"));
+      await registry.transferFrom(
+        alice.address,
+        registry.address,
+        parseEther("1")
+      );
       expect(await registry.getStatus(alice.address)).equal(Bytes32Zero);
     });
   });
@@ -502,6 +507,22 @@ describe("Shareholder Registry", () => {
       await registry.burn(registry.address, parseEther("4"));
 
       expect(await registry.balanceOf(registry.address)).equal(parseEther("6"));
+    });
+
+    it("should not allow shareholders to transfer tokens", async () => {
+      await expect(
+        registry.connect(alice).transfer(bob.address, parseEther("1"))
+      ).revertedWith("ShareholderRegistry: transfer disabled");
+    });
+
+    it("should allow a resolution to transfer tokens", async () => {
+      await registry.mint(alice.address, parseEther("1"));
+      await expect(
+        // Deployer has `RESOLUTION_ROLE`
+        registry.transferFrom(alice.address, bob.address, parseEther("1"))
+      )
+        .to.emit(registry, "Transfer")
+        .withArgs(alice.address, bob.address, parseEther("1"));
     });
 
     it("should not allow to transfer factional tokens", async () => {
