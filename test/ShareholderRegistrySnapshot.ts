@@ -472,7 +472,7 @@ describe("Shareholder Registry", () => {
 
     it("should not allow anyone without RESOLUTION_ROLE to transferFromDAOBatch", async () => {
       await expect(
-        registry.connect(alice).transferFromDAOBatch([])
+        registry.connect(alice).batchTransferFromDAO([])
       ).revertedWith(
         `AccessControl: account ${alice.address.toLowerCase()} is missing role ${RESOLUTION_ROLE.toLowerCase()}`
       );
