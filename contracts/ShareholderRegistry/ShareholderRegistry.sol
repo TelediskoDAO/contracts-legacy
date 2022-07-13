@@ -93,8 +93,9 @@ contract ShareholderRegistry is
         public
         virtual
         override
+        onlyRole(Roles.RESOLUTION_ROLE)
         returns (bool)
     {
-        require(false, "ShareholderRegistry: transfer disabled");
+        return super.transfer(to, amount);
     }
 }

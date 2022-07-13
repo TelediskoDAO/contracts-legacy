@@ -11,7 +11,6 @@ import {
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { parseEther } from "ethers/lib/utils";
 import { roles } from "./utils/roles";
-import { shareholderRegistry } from "../typechain/contracts";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -514,12 +513,6 @@ describe("Shareholder Registry", () => {
       await registry.burn(registry.address, parseEther("4"));
 
       expect(await registry.balanceOf(registry.address)).equal(parseEther("6"));
-    });
-
-    it("should not allow shareholders to transfer tokens", async () => {
-      await expect(
-        registry.connect(alice).transfer(bob.address, parseEther("1"))
-      ).revertedWith("ShareholderRegistry: transfer disabled");
     });
 
     it("should allow a resolution to transfer tokens", async () => {
