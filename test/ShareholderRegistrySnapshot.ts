@@ -448,12 +448,12 @@ describe("Shareholder Registry", () => {
     });
   });
 
-  describe("transferFromDAOBatch", async () => {
+  describe("batchTransferFromDAO", async () => {
     it("allow transfering DAO shares to multiple addresses", async () => {
       await registry.mint(registry.address, parseEther("20"));
 
       await expect(
-        registry.transferFromDAOBatch([
+        registry.batchTransferFromDAO([
           alice.address,
           bob.address,
           managingBoard.address,

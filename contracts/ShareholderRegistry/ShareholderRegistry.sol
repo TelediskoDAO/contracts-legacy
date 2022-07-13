@@ -72,11 +72,11 @@ contract ShareholderRegistry is
         _burn(account, amount);
     }
 
-    function transferFromDAOBatch(address[] memory recipients)
+    function batchTransferFromDAO(address[] memory recipients)
         public
         virtual
         onlyRole(Roles.RESOLUTION_ROLE)
     {
-        super._transferFromDAOBatch(recipients);
+        super._batchTransferFromDAO(recipients);
     }
 }
