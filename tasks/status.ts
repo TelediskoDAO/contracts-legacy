@@ -67,3 +67,20 @@ task("mint", "Mint teledisko tokens to an address")
       console.log("  Transaction included in block", receipt.blockNumber);
     }
   );
+
+task("mint-vesting", "Mint teledisko tokens to an address, vesting")
+  .addParam("account", "The address")
+  .addParam("amount", "How many tokens")
+  .setAction(
+    async ({ account, amount }: { account: string; amount: string }, hre) => {
+      const contract = await loadContract(
+        hre,
+        TelediskoToken__factory,
+        "TelediskoToken"
+      );
+      const tx = await contract.mintVesting(account, parseEther(amount));
+      console.log("  Submitted tx", tx.hash);
+      const receipt = await tx.wait();
+      console.log("  Transaction included in block", receipt.blockNumber);
+    }
+  );
