@@ -5,6 +5,7 @@ import {
   ShareholderRegistry__factory,
   TelediskoToken__factory,
 } from "../typechain";
+import { readFileSync } from "fs";
 
 task("mint-share", "Mint a share to an address")
   .addPositionalParam("account", "The address")
@@ -16,6 +17,26 @@ task("mint-share", "Mint a share to an address")
     );
 
     const tx = await contract.mint(account, parseEther("1"));
+    console.log("  Submitted tx", tx.hash);
+    const receipt = await tx.wait();
+    console.log("  Transaction included in block", receipt.blockNumber);
+  });
+
+task(
+  "transfer-shares-batch",
+  "Transfer shares from DAO to multiple addresses address"
+)
+  .addPositionalParam("accountFile", "The addresses file")
+  .setAction(async ({ accountFile }: { accountFile: string }, hre) => {
+    const contract = await loadContract(
+      hre,
+      ShareholderRegistry__factory,
+      "ShareholderRegistry"
+    );
+
+    const accounts = readFileSync(accountFile, "utf-8").split("\n");
+
+    const tx = await contract.batchTransferFromDAO(accounts);
     console.log("  Submitted tx", tx.hash);
     const receipt = await tx.wait();
     console.log("  Transaction included in block", receipt.blockNumber);
