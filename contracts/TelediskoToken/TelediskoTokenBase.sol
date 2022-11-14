@@ -18,7 +18,7 @@ contract TelediskoTokenBase is ERC20Upgradeable {
     }
 
     struct Offer {
-        uint256 expiration;
+        uint256 createdAt;
         uint256 amount;
     }
 
@@ -40,7 +40,7 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         uint128 id,
         address from,
         uint256 amount,
-        uint256 expiration
+        uint256 createdAt
     );
 
     event OfferExpired(uint128 id, address from, uint256 amount);
@@ -52,16 +52,17 @@ contract TelediskoTokenBase is ERC20Upgradeable {
     uint256 public constant WAITING_TIME_EXTERNAL = 7 days;
     uint256 public constant WAITING_TIME_DAO = 60 days;
 
-    bytes32 public constant VAULT_CONTRIBUTORS =
-        keccak256("VAULT_CONTRIBUTORS");
-    bytes32 public constant VAULT_EXTERNAL = keccak256("VAULT_EXTERNAL");
-    bytes32 public constant VAULT_DAO = keccak256("VAULT_DAO");
-
     // TODO: what happens to vesting tokens when someone loses the contributor status?
     // In theory they should be burned or added to a pool
     mapping(address => uint256) internal _vestingBalance;
-    mapping(address => uint256) internal _unlockedBalance;
+    // mapping(address => uint256) internal _unlockedBalance;
     mapping(address => Offers) internal _offers;
+
+    mapping(address => uint256) internal _vaultContributors;
+    mapping(address => uint256) internal _vaultExternal;
+    mapping(address => uint256) internal _vaultDAO;
+
+    address public DAO_ADDRESS = 0x00;
 
     function _setVoting(IVoting voting) internal {
         _voting = voting;
@@ -74,32 +75,19 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         _shareholderRegistry = shareholderRegistry;
     }
 
-    function _addressToVault(address a, bytes32 vault)
-        internal
-        virtual
-        returns (address)
-    {
-        return address(uint160(uint256(keccak256(abi.encodePacked(vault, a)))));
-    }
-
     function _createOffer(address account, uint256 amount) internal virtual {
         // Vesting tokens cannot be offered because they need to be vested
         // before they can be transferred
         require(
-            amount <=
-                balanceOf(account) -
-                    _vestingBalance[account] -
-                    _unlockedBalance[account],
+            amount <= balanceOf(account) - _vestingBalance[account],
             "TelediskoToken: offered amount exceeds balance"
         );
         uint256 expiration = block.timestamp + WAITING_TIME_EXTERNAL;
         uint128 id = _enqueue(_offers[account], Offer(expiration, amount));
 
-        transferFrom(
-            account,
-            _addressToVault(account, VAULT_CONTRIBUTORS),
-            amount
-        );
+        _transfer(account, address(this), amount);
+
+        _vaultContributors[account] += amount;
 
         emit OfferCreated(id, _msgSender(), amount, expiration);
     }
@@ -114,14 +102,20 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         for (uint128 i = offers.start; i < offers.end; i++) {
             Offer storage offer = offers.offer[i];
 
-            if (block.timestamp > offer.expiration) {
+            if (block.timestamp > offer.createdAt + WAITING_TIME_EXTERNAL) {
                 // If offer expired:
 
                 // 1. free the tokens
-                _unlockedBalance[from] += offer.amount;
+                _vaultContributors[from] -= offer.amount;
+                _vaultExternal[from] += offer.amount;
+
+                emit OfferExpired(i, from, offer.amount);
+            } else if (block.timestamp > offer.createdAt + WAITING_TIME_DAO) {
+                // 1. free the tokens
+                _vaultExternal[from] -= offer.amount;
+                _vaultDAO[from] += offer.amount;
 
                 // 2. delete the expired offer
-                emit OfferExpired(i, from, offer.amount);
                 delete offers.offer[offers.start++];
             } else {
                 // If offer is active check if the amount is bigger than the
@@ -130,26 +124,20 @@ contract TelediskoTokenBase is ERC20Upgradeable {
                     break;
                 } else if (amount >= offer.amount) {
                     amount -= offer.amount;
+                    _vaultContributors[from] -= offer.amount;
 
-                    // 1. free the tokens (put them in unlocked balance, we will
-                    // move them immediately after the method returns)
-                    _unlockedBalance[from] += offer.amount;
-
-                    // 2. remove the offer
+                    // Remove the offer
                     emit OfferMatched(i, from, to, offer.amount);
                     delete offers.offer[offers.start++];
-
                     // If the amount is smaller than the offer amount, then
                 } else {
-                    // 1. free the tokens (put them in unlocked balance, we will
-                    // move them immediately after the method returns)
-                    _unlockedBalance[from] += amount;
-
-                    // 2. decrease the amount of offered tokens
+                    // 1. decrease the amount of offered tokens
                     offer.amount -= amount;
+                    _vaultContributors[from] -= amount;
+
                     emit OfferMatched(i, from, to, amount);
 
-                    // 3. we've exhausted the amount, set it to zero and go back
+                    // 2. we've exhausted the amount, set it to zero and go back
                     // to the calling function
                     amount = 0;
                 }
@@ -159,8 +147,19 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         require(amount == 0, "TelediskoToken: amount exceeds offer");
     }
 
-    function offerToDAO() public {
-        // Check for 60 days
+    function offerToDAO(address from, uint256 amount) public {
+        // Amount set to zero so it just consumes what's expired
+        _drainOffers(from, address(0), 0);
+
+        require(
+            amount <= _vaultDAO[from],
+            "TelediskoToken: transfer amount exceeds transferrable tokens"
+        );
+
+        _vaultDAO[from] -= amount;
+
+        // Use swap method rather than a simple transfer
+        _transfer(address(this), DAO_ADDRESS, amount);
     }
 
     function _withdraw(
@@ -172,13 +171,15 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         _drainOffers(from, address(0), 0);
 
         require(
-            amount <= _unlockedBalance[from],
-            "TelediskoToken: transfer amount exceeds unlocked tokens"
+            amount <= _vaultExternal[from] + _vaultDAO[from],
+            "TelediskoToken: transfer amount exceeds transferrable tokens"
         );
 
-        _transfer(address(this), to, amount);
+        // FIXME
+        _vaultExternal[from] -= amount;
+        _vaultDAO[from] -= 1;
 
-        _unlockedBalance[from] -= amount;
+        _transfer(address(this), to, amount);
     }
 
     function _matchOffer(
@@ -189,7 +190,6 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         _drainOffers(from, to, amount);
         // use _transfer to bypass allowance check
         _transfer(address(this), to, amount);
-        _unlockedBalance[from] -= amount;
     }
 
     function _beforeTokenTransfer(
