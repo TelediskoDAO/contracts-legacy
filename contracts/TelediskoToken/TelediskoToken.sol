@@ -75,6 +75,10 @@ contract TelediskoToken is
         _matchOffer(from, to, amount);
     }
 
+    function withdraw(address to, uint256 amount) public virtual {
+        _withdraw(_msgSender(), to, amount);
+    }
+
     function setVesting(address to, uint256 amount)
         public
         virtual

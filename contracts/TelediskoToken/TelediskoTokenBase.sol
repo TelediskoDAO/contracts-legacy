@@ -49,7 +49,13 @@ contract TelediskoTokenBase is ERC20Upgradeable {
 
     event VestingSet(address to, uint256 amount);
 
-    uint256 public constant OFFER_EXPIRATION = 7 days;
+    uint256 public constant WAITING_TIME_EXTERNAL = 7 days;
+    uint256 public constant WAITING_TIME_DAO = 60 days;
+
+    bytes32 public constant VAULT_CONTRIBUTORS =
+        keccak256("VAULT_CONTRIBUTORS");
+    bytes32 public constant VAULT_EXTERNAL = keccak256("VAULT_EXTERNAL");
+    bytes32 public constant VAULT_DAO = keccak256("VAULT_DAO");
 
     // TODO: what happens to vesting tokens when someone loses the contributor status?
     // In theory they should be burned or added to a pool
@@ -68,6 +74,14 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         _shareholderRegistry = shareholderRegistry;
     }
 
+    function _addressToVault(address a, bytes32 vault)
+        internal
+        virtual
+        returns (address)
+    {
+        return address(uint160(uint256(keccak256(abi.encodePacked(vault, a)))));
+    }
+
     function _createOffer(address account, uint256 amount) internal virtual {
         // Vesting tokens cannot be offered because they need to be vested
         // before they can be transferred
@@ -78,8 +92,14 @@ contract TelediskoTokenBase is ERC20Upgradeable {
                     _unlockedBalance[account],
             "TelediskoToken: offered amount exceeds balance"
         );
-        uint256 expiration = block.timestamp + OFFER_EXPIRATION;
+        uint256 expiration = block.timestamp + WAITING_TIME_EXTERNAL;
         uint128 id = _enqueue(_offers[account], Offer(expiration, amount));
+
+        transferFrom(
+            account,
+            _addressToVault(account, VAULT_CONTRIBUTORS),
+            amount
+        );
 
         emit OfferCreated(id, _msgSender(), amount, expiration);
     }
@@ -139,25 +159,53 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         require(amount == 0, "TelediskoToken: amount exceeds offer");
     }
 
+    function offerToDAO() public {
+        // Check for 60 days
+    }
+
+    function _withdraw(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual {
+        // Amount set to zero so it just consumes what's expired
+        _drainOffers(from, address(0), 0);
+
+        require(
+            amount <= _unlockedBalance[from],
+            "TelediskoToken: transfer amount exceeds unlocked tokens"
+        );
+
+        _transfer(address(this), to, amount);
+
+        _unlockedBalance[from] -= amount;
+    }
+
+    function _matchOffer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual {
+        _drainOffers(from, to, amount);
+        // use _transfer to bypass allowance check
+        _transfer(address(this), to, amount);
+        _unlockedBalance[from] -= amount;
+    }
+
     function _beforeTokenTransfer(
         address from,
         address to,
         uint256 amount
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, amount);
-        if (
-            _shareholderRegistry.isAtLeast(
+
+        require(
+            !_shareholderRegistry.isAtLeast(
                 _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                from
-            )
-        ) {
-            // Amount set to zero so it just consumes what's expired
-            _drainOffers(from, address(0), 0);
-            require(
-                amount <= _unlockedBalance[from],
-                "TelediskoToken: transfer amount exceeds unlocked tokens"
-            );
-        }
+                _msgSender()
+            ),
+            "TelediskoToken: contributors cannot transfer"
+        );
     }
 
     function _afterTokenTransfer(
@@ -173,24 +221,6 @@ contract TelediskoTokenBase is ERC20Upgradeable {
             balanceOf(from) >= _vestingBalance[from],
             "TelediskoToken: transfer amount exceeds vesting"
         );
-
-        if (
-            _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                from
-            )
-        ) {
-            _unlockedBalance[from] -= amount;
-        }
-    }
-
-    function _matchOffer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual {
-        _drainOffers(from, to, amount);
-        _transfer(from, to, amount);
     }
 
     // TODO: ask Marko whether vesting tokens can be given only to contributors
