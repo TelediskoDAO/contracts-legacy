@@ -5,7 +5,7 @@ import { solidity } from "ethereum-waffle";
 import {
   Escrow,
   Escrow__factory,
-  StableTokenMock,
+  TokenMock,
   StableTokenMock__factory,
   TelediskoTokenMock,
   TelediskoTokenMock__factory,
@@ -21,7 +21,7 @@ const AddressZero = ethers.constants.AddressZero;
 describe("Escrow", () => {
   let escrow: Escrow;
   let telediskoTokenMock: TelediskoTokenMock;
-  let stableTokenMock: StableTokenMock;
+  let stableTokenMock: TokenMock;
   let deployer: SignerWithAddress,
     account: SignerWithAddress,
     contributor: SignerWithAddress,
@@ -43,7 +43,7 @@ describe("Escrow", () => {
     )) as TelediskoTokenMock__factory;
 
     const StableTokenMockFactory = (await ethers.getContractFactory(
-      "StableTokenMock",
+      "TokenMock",
       deployer
     )) as StableTokenMock__factory;
 

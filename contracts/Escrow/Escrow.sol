@@ -43,6 +43,7 @@
  * - Now Alice has 50 `EEUR`, Bob has 50 `TT`
  */
 
+/*
 pragma solidity ^0.8.0;
 
 import "../TelediskoToken/IERC20MatchOffer.sol";
@@ -177,3 +178,4 @@ contract Escrow is Context {
         require(amount == 0, "TelediskoToken: amount exceeds offer");
     }
 }
+*/

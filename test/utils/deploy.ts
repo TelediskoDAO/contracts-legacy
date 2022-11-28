@@ -5,7 +5,7 @@ import {
   Escrow,
   Escrow__factory,
   ShareholderRegistry,
-  StableTokenMock,
+  TokenMock,
   StableTokenMock__factory,
   TelediskoToken,
   Voting,
@@ -29,7 +29,7 @@ export async function deployDAO(
     ShareholderRegistry,
     ResolutionManager,
     Escrow,
-    StableTokenMock
+    TokenMock
   ]
 > {
   let voting: Voting,
@@ -37,7 +37,7 @@ export async function deployDAO(
     shareholderRegistry: ShareholderRegistry,
     resolution: ResolutionManager,
     escrow: Escrow,
-    stableTokenMock: StableTokenMock;
+    tokenMock: TokenMock;
 
   const VotingFactory = (await ethers.getContractFactory(
     "Voting",
@@ -65,7 +65,7 @@ export async function deployDAO(
   )) as Escrow__factory;
 
   const StableTokenMockFactory = (await ethers.getContractFactory(
-    "StableTokenMock",
+    "TokenMock",
     deployer
   )) as StableTokenMock__factory;
 
@@ -90,10 +90,10 @@ export async function deployDAO(
   )) as ShareholderRegistry;
   await shareholderRegistry.deployed();
 
-  stableTokenMock = await StableTokenMockFactory.deploy();
-  await stableTokenMock.deployed();
+  tokenMock = await StableTokenMockFactory.deploy();
+  await tokenMock.deployed();
 
-  escrow = await EscrowFactory.deploy(token.address, stableTokenMock.address);
+  escrow = await EscrowFactory.deploy(token.address, tokenMock.address);
   await escrow.deployed();
   const operatorRole = await roles.OPERATOR_ROLE();
   const resolutionRole = await roles.RESOLUTION_ROLE();
@@ -141,12 +141,5 @@ export async function deployDAO(
     managingBoard.address
   );
 
-  return [
-    voting,
-    token,
-    shareholderRegistry,
-    resolution,
-    escrow,
-    stableTokenMock,
-  ];
+  return [voting, token, shareholderRegistry, resolution, escrow, tokenMock];
 }

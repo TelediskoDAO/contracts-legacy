@@ -2,15 +2,14 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
-import "../Voting/IVoting.sol";
 import "../ShareholderRegistry/IShareholderRegistry.sol";
-import "./ITelediskoToken.sol";
+import "../extensions/IERC20Receiver.sol";
 
-contract OfferMatch is Context {
+abstract contract TokenGatewayBase is Context, IERC20Receiver {
     IShareholderRegistry internal _shareholderRegistry;
-    ITelediskoToken internal _telediskoToken;
+    IERC20 internal _erc20;
 
     struct Offer {
         uint256 createdAt;
@@ -21,14 +20,6 @@ contract OfferMatch is Context {
         uint128 start;
         uint128 end;
         mapping(uint128 => Offer) offer;
-    }
-
-    function _enqueue(Offers storage offers, Offer memory offer)
-        internal
-        returns (uint128)
-    {
-        offers.offer[offers.end] = offer;
-        return offers.end++;
     }
 
     event OfferCreated(
@@ -51,21 +42,29 @@ contract OfferMatch is Context {
 
     address public DAO_ADDRESS = address(0x00);
 
-    function _setShareholderRegistry(IShareholderRegistry shareholderRegistry)
-        internal
-        virtual
-    {
+    function _enqueue(
+        Offers storage offers,
+        Offer memory offer
+    ) internal virtual returns (uint128) {
+        offers.offer[offers.end] = offer;
+        return offers.end++;
+    }
+
+    function _setShareholderRegistry(
+        IShareholderRegistry shareholderRegistry
+    ) internal virtual {
         _shareholderRegistry = shareholderRegistry;
     }
 
-    function _setTelediskoToken(ITelediskoToken telediskoToken)
-        internal
-        virtual
-    {
-        _telediskoToken = telediskoToken;
+    function _setERC20(IERC20 erc20) internal virtual {
+        _erc20 = erc20;
     }
 
-    function onERC20Received(address from, uint256 amount) internal virtual {
+    function _onERC20Received(address from, uint256 amount) internal virtual {
+        require(
+            _msgSender() == address(_erc20),
+            "OfferMatch: token not accepted"
+        );
         require(
             _shareholderRegistry.isAtLeast(
                 _shareholderRegistry.CONTRIBUTOR_STATUS(),
@@ -94,7 +93,6 @@ contract OfferMatch is Context {
 
             if (block.timestamp > offer.createdAt + referenceExpiration) {
                 if (amount > offer.amount) {
-                    // 1. free the tokens
                     amount -= offer.amount;
                     delete offers.offer[offers.start++];
                 } else {
@@ -109,17 +107,17 @@ contract OfferMatch is Context {
         require(amount == 0, "TelediskoToken: amount exceeds withdraw amount");
     }
 
-    function _beforeWithdrawToExternal(address from, uint256 amount)
-        internal
-        virtual
-    {
+    function _beforeWithdrawToExternal(
+        address from,
+        uint256 amount
+    ) internal virtual {
         _beforeWithdraw(from, amount, WAITING_TIME_EXTERNAL);
     }
 
-    function _beforeWithdrawToDAO(address from, uint256 amount)
-        internal
-        virtual
-    {
+    function _beforeWithdrawToDAO(
+        address from,
+        uint256 amount
+    ) internal virtual {
         _beforeWithdraw(from, amount, WAITING_TIME_DAO);
     }
 
@@ -161,20 +159,18 @@ contract OfferMatch is Context {
         require(amount == 0, "TelediskoToken: amount exceeds offer");
     }
 
-    function offerToDAO(address from, uint256 amount) public {
-        // Amount set to zero so it just consumes what's expired
+    function _offerToDAO(address from, uint256 amount) internal virtual {
         _beforeWithdrawToDAO(from, amount);
-        _telediskoToken.transfer(address(this), DAO_ADDRESS, amount);
+        _erc20.transfer(DAO_ADDRESS, amount);
     }
 
-    function withdraw(
+    function _withdraw(
         address from,
         address to,
         uint256 amount
-    ) public {
-        // Amount set to zero so it just consumes what's expired
+    ) internal virtual {
         _beforeWithdrawToExternal(from, amount);
-        _telediskoToken.tranfer(address(this), to, amount);
+        _erc20.transfer(to, amount);
     }
 
     function _matchOffer(
@@ -183,16 +179,12 @@ contract OfferMatch is Context {
         uint256 amount
     ) internal virtual {
         _beforeMatchOffer(from, to, amount);
-        // use _transfer to bypass allowance check
-        _telediskoToken.transfer(address(this), to, amount);
+        _erc20.transfer(to, amount);
     }
 
-    function _calculateOffersOf(address account)
-        internal
-        view
-        virtual
-        returns (uint256, uint256)
-    {
+    function _calculateOffersOf(
+        address account
+    ) internal view virtual returns (uint256, uint256) {
         Offers storage offers = _offers[account];
 
         uint256 offered = _vaultContributors[account];
@@ -208,64 +200,20 @@ contract OfferMatch is Context {
         return (offered, unlocked);
     }
 
-    // Tokens owned by a contributor that cannot be freely transferred (see SHA Article 10)
-    function lockedBalanceOf(address account)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        if (
-            _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                account
-            )
-        ) {
-            (, uint256 unlocked) = _calculateOffersOf(account);
-            return balanceOf(account) - unlocked;
-        }
-
-        return 0;
-    }
-
     // Tokens owned by a contributor that are offered to other contributors
-    function offeredBalanceOf(address account)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        if (
-            _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                account
-            )
-        ) {
-            (uint256 offered, ) = _calculateOffersOf(account);
-            return offered;
-        }
-
-        return 0;
+    function offeredBalanceOf(
+        address account
+    ) public view virtual returns (uint256) {
+        (uint256 offered, ) = _calculateOffersOf(account);
+        return offered;
     }
 
     // Tokens that has been offered but not bought by any other contributor
     // within the allowed timeframe.
-    function unlockedBalanceOf(address account)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        if (
-            _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                account
-            )
-        ) {
-            (, uint256 unlocked) = _calculateOffersOf(account);
-            return unlocked;
-        }
-
-        return balanceOf(account);
+    function unlockedBalanceOf(
+        address account
+    ) public view virtual returns (uint256) {
+        (, uint256 unlocked) = _calculateOffersOf(account);
+        return unlocked;
     }
 }

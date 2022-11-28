@@ -19,19 +19,10 @@ contract TelediskoTokenBase is ERC20Upgradeable {
 
     event VestingSet(address to, uint256 amount);
 
-    uint256 public constant WAITING_TIME_EXTERNAL = 7 days;
-    uint256 public constant WAITING_TIME_DAO = 60 days;
-
     // TODO: what happens to vesting tokens when someone loses the contributor status?
     // In theory they should be burned or added to a pool
     mapping(address => uint256) internal _vestingBalance;
     // mapping(address => uint256) internal _unlockedBalance;
-
-    mapping(address => uint256) internal _vaultContributors;
-    mapping(address => uint256) internal _vaultExternal;
-    mapping(address => uint256) internal _vaultDAO;
-
-    address public DAO_ADDRESS = address(0x00);
 
     function _setVoting(IVoting voting) internal {
         _voting = voting;
@@ -91,26 +82,6 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         emit VestingSet(account, amount);
     }
 
-    function _calculateOffersOf(address account)
-        internal
-        view
-        virtual
-        returns (uint256, uint256)
-    {
-        Offers storage offers = _offers[account];
-
-        uint256 offered = _vaultContributors[account];
-        uint256 unlocked;
-
-        for (uint128 i = offers.start; i < offers.end; i++) {
-            Offer storage offer = offers.offer[i];
-
-            if (block.timestamp > offer.createdAt + WAITING_TIME_EXTERNAL) {
-                unlocked += offer.amount;
-            }
-        }
-        return (offered, unlocked);
-    }
 
     // Tokens that are still in the vesting phase
     function vestingBalanceOf(address account)
@@ -122,64 +93,4 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         return _vestingBalance[account];
     }
 
-    // Tokens owned by a contributor that cannot be freely transferred (see SHA Article 10)
-    function lockedBalanceOf(address account)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        if (
-            _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                account
-            )
-        ) {
-            (, uint256 unlocked) = _calculateOffersOf(account);
-            return balanceOf(account) - unlocked;
-        }
-
-        return 0;
-    }
-
-    // Tokens owned by a contributor that are offered to other contributors
-    function offeredBalanceOf(address account)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        if (
-            _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                account
-            )
-        ) {
-            (uint256 offered, ) = _calculateOffersOf(account);
-            return offered;
-        }
-
-        return 0;
-    }
-
-    // Tokens that has been offered but not bought by any other contributor
-    // within the allowed timeframe.
-    function unlockedBalanceOf(address account)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        if (
-            _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                account
-            )
-        ) {
-            (, uint256 unlocked) = _calculateOffersOf(account);
-            return unlocked;
-        }
-
-        return balanceOf(account);
-    }
 }
