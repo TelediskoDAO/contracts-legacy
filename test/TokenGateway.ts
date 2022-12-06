@@ -26,6 +26,7 @@ const WEEK = DAY * 7;
 describe("TokenGateway", () => {
   let RESOLUTION_ROLE: string, OPERATOR_ROLE: string, ESCROW_ROLE: string;
   let token: TelediskoTokenMock;
+  let token2: TelediskoTokenMock;
   let shareholderRegistry: ShareholderRegistryMock;
   let gateway: TokenGateway;
   let deployer: SignerWithAddress,
@@ -55,6 +56,9 @@ describe("TokenGateway", () => {
 
     token = await TelediskoTokenMockFactory.deploy();
     await token.deployed();
+
+    token2 = await TelediskoTokenMockFactory.deploy();
+    await token2.deployed();
 
     shareholderRegistry = await ShareholderRegistryMockFactory.deploy();
     await shareholderRegistry.deployed();
@@ -113,10 +117,10 @@ describe("TokenGateway", () => {
       });
 
       it("should not allow a contributor to create an offer with another erc20 token", async () => {
-        await token.mint(nonContributor.address, 100);
+        await token2.mint(nonContributor.address, 100);
         await expect(
-          token.connect(nonContributor).transfer(gateway.address, 40)
-        ).revertedWith("OfferMatch: not a contributor");
+          token2.connect(nonContributor).transfer(gateway.address, 40)
+        ).revertedWith("OfferMatch: token not accepted");
       });
     });
 
