@@ -8,7 +8,7 @@ import {
   PriceOracle,
   PriceOracle__factory,
 } from "../typechain";
-import { exportAddress } from "./config";
+import { exportAddress, loadContract } from "./config";
 import { deployProxy, getWallet } from "./utils";
 
 task("deploy", "Deploy DAO").setAction(async (_, hre) => {
@@ -89,3 +89,10 @@ task("deploy-oracle", "Deploy Oracle")
 
     console.log(`\n\nOracle deployed 🔮 You can operate it with ${relayer}`);
   });
+
+task("oracle-price", "Deploy Oracle").setAction(async (_, hre) => {
+  const contract = await loadContract(hre, PriceOracle__factory, "PriceOracle");
+  const result = await contract.getReferenceData("EEUR", "EUR");
+
+  console.log(`Data ${result}`);
+});
