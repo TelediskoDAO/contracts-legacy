@@ -13,7 +13,7 @@ contract TokenGateway is TokenGatewayBase, AccessControl {
     constructor(IERC20 erc20, IShareholderRegistry shareholderRegistry) {
         _erc20 = erc20;
         _shareholderRegistry = shareholderRegistry;
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
     function onERC20Received(
