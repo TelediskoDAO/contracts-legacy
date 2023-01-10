@@ -93,7 +93,7 @@ const config: HardhatUserConfig = {
       accounts: [TEVMOS_PRIVATE_KEY],
     },
     evmos: {
-      url: "https://jsonrpc-evmos-ia.notional.ventures/",
+      url: "https://eth.bd.evmos.org:8545",
       accounts: [EVMOS_PRIVATE_KEY],
     },
     "cronostestnet_338-3": {
