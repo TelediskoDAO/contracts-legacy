@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Roles } from "./extensions/Roles.sol";
+import "hardhat/console.sol";
 
 contract Tokenomics is Initializable, AccessControlUpgradeable {
     bytes32 public constant TOKEN_MANAGER_ROLE =
@@ -126,15 +127,15 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
         uint256 capitalizable;
         for (
             uint256 i = _vaultedTokensFirst[to];
-            i <= _vaultedTokens[to].length;
+            i < _vaultedTokens[to].length;
             i++
         ) {
             uint256 timestamp = _vaultedTokens[to][i].timestamp;
-            if (timestamp < threshold) {
+            if (timestamp <= threshold) {
+                capitalizable += _vaultedTokens[to][i].amount;
+            } else {
                 break;
             }
-
-            capitalizable += _vaultedTokens[to][i].amount;
         }
 
         uint256 maxRedeemable = _maxCapitlizableBalance(to);
@@ -147,31 +148,32 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
 
     function _maxCapitlizableBalance(
         address to
-    ) internal view returns (uint256) {
-        // 3 months since last activity within the last 15 months
+    ) internal view returns (uint256 capitalizable) {
+        if (_mintedTokens[to].length > 0) {
+            uint256 lastActivity = _mintedTokens[to][
+                _mintedTokens[to].length - 1
+            ].timestamp;
 
-        // Take only transaction from last 15 months
-        uint256 lastActivity = _mintedTokens[to][_mintedTokens[to].length - 1]
-            .timestamp;
-        uint256 threshold = lastActivity - 30 days * 3;
-        uint256 earliestTimestamp = block.timestamp - 455 days;
+            // User can redeem tokens minted within 3 months since last activity
+            uint256 threshold = lastActivity - 30 days * 3;
+            // User cannot redeem tokens that were minted earlier than 15 months ago
+            uint256 earliestTimestamp = block.timestamp - 30 days * 15;
 
-        if (threshold < earliestTimestamp) {
-            threshold = earliestTimestamp;
-        }
-
-        require(threshold > _lastCapitalized[to], "already redeemed");
-
-        uint256 capitalizable;
-        for (uint256 i = _mintedTokens[to].length; i > 0; i--) {
-            uint256 timestamp = _mintedTokens[to][i - 1].timestamp;
-            if (timestamp < threshold) {
-                break;
+            // We cap it to 15 months
+            if (threshold < earliestTimestamp) {
+                threshold = earliestTimestamp;
             }
 
-            capitalizable += _mintedTokens[to][i - 1].amount;
-        }
+            require(threshold > _lastCapitalized[to], "already redeemed");
 
-        return capitalizable;
+            for (uint256 i = _mintedTokens[to].length; i > 0; i--) {
+                uint256 timestamp = _mintedTokens[to][i - 1].timestamp;
+                if (timestamp >= threshold) {
+                    capitalizable += _mintedTokens[to][i - 1].amount;
+                } else {
+                    break;
+                }
+            }
+        }
     }
 }
