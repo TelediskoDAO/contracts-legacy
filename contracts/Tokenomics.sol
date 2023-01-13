@@ -31,7 +31,7 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
     mapping(address => Mint[]) internal _mintedTokens;
     mapping(address => Vaulted[]) internal _vaultedTokens;
     mapping(address => uint256) internal _vaultedTokensFirst;
-    mapping(address => uint256) internal _lastCapitalized;
+    mapping(address => uint256) internal _lastRedeemed;
 
     /**
      +1000,Jan 1
@@ -77,29 +77,25 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
         }
     }
 
-    function afterCapitalize(
-        address from
-    ) external onlyRole(TOKEN_MANAGER_ROLE) {
-        _lastCapitalized[from] = block.timestamp;
+    function afterRedeem(address from) external onlyRole(TOKEN_MANAGER_ROLE) {
+        uint256 redeemable = redeemableBalance(from);
 
-        bool done = false;
-        while (!done) {
+        while (redeemable > 0) {
             uint256 currentTimestamp = _vaultedTokens[from][
                 _vaultedTokensFirst[from]
             ].timestamp;
-            if (currentTimestamp < block.timestamp) {
-                delete _vaultedTokens[from][_vaultedTokensFirst[from]];
-                _vaultedTokensFirst[from]++;
-            } else {
-                done = true;
-            }
+            redeemable -= _vaultedTokens[from][_vaultedTokensFirst[from]]
+                .amount;
+            delete _vaultedTokens[from][_vaultedTokensFirst[from]];
+            _vaultedTokensFirst[from]++;
+            _lastRedeemed[from] = currentTimestamp;
         }
     }
 
     // Activity is only counted in terms of mint
 
     // Whenever the user transfers the token to the secondary market,
-    // the count of capitalizable tokens decreases starting from those from
+    // the count of redeemable tokens decreases starting from those from
     // the earliest activity
     // Whenever the user receives tokens from the secondary market,
     //
@@ -107,24 +103,24 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
     // 60 days timer starts from moment of offer
     //
 
-    // Tokens are not capitalizable once they are transferred away from the vault
+    // Tokens are not redeemable once they are transferred away from the vault
     // the user receives (mint) 500 TT
     // the user offers 200 TT
     // 40 days pass
-    // the user can capitalize 500 TT in 20 days
+    // the user can redeem 500 TT in 20 days
     // the user transfers 200 TT outside the vault
-    // the user can capitalize 300 TT in 20 days
+    // the user can redeem 300 TT in 20 days
     // the user receives 200 tokens from outside
     // the user offers 200 TT
-    // the user can capitalize 300 TT in 20 days and 200 TT in 60 days
+    // the user can redeem 300 TT in 20 days and 200 TT in 60 days
 
     // The solution works only if the user redeems all the amount that is redeemable
     // at once. If, for instance, the user has 600 pleadgeable tokens, he must
-    // capitalize 600 tokens in 1 shot, and it's not possible to do 300 now and 300 later
+    // redeem 600 tokens in 1 shot, and it's not possible to do 300 now and 300 later
 
-    function capitalizableBalance(address to) public view returns (uint256) {
+    function redeemableBalance(address to) public view returns (uint256) {
         uint256 threshold = block.timestamp - 60 days;
-        uint256 capitalizable;
+        uint256 redeemable;
         for (
             uint256 i = _vaultedTokensFirst[to];
             i < _vaultedTokens[to].length;
@@ -132,23 +128,23 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
         ) {
             uint256 timestamp = _vaultedTokens[to][i].timestamp;
             if (timestamp <= threshold) {
-                capitalizable += _vaultedTokens[to][i].amount;
+                redeemable += _vaultedTokens[to][i].amount;
             } else {
                 break;
             }
         }
 
         uint256 maxRedeemable = _maxCapitlizableBalance(to);
-        if (capitalizable > maxRedeemable) {
+        if (redeemable > maxRedeemable) {
             return maxRedeemable;
         }
 
-        return capitalizable;
+        return redeemable;
     }
 
     function _maxCapitlizableBalance(
         address to
-    ) internal view returns (uint256 capitalizable) {
+    ) internal view returns (uint256 redeemable) {
         if (_mintedTokens[to].length > 0) {
             uint256 lastActivity = _mintedTokens[to][
                 _mintedTokens[to].length - 1
@@ -164,12 +160,14 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
                 threshold = earliestTimestamp;
             }
 
-            require(threshold > _lastCapitalized[to], "already redeemed");
+            if (threshold < _lastRedeemed[to]) {
+                threshold < _lastRedeemed[to];
+            }
 
             for (uint256 i = _mintedTokens[to].length; i > 0; i--) {
                 uint256 timestamp = _mintedTokens[to][i - 1].timestamp;
                 if (timestamp >= threshold) {
-                    capitalizable += _mintedTokens[to][i - 1].amount;
+                    redeemable += _mintedTokens[to][i - 1].amount;
                 } else {
                     break;
                 }
