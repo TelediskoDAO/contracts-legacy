@@ -36,10 +36,6 @@ contract InternalMarket is InternalMarketBase, AccessControl {
         _withdraw(_msgSender(), to, amount);
     }
 
-    function offerToDAO(uint amount) public {
-        _offerToDAO(_msgSender(), amount);
-    }
-
     function setShareholderRegistry(
         IShareholderRegistry shareholderRegistry
     ) public onlyRole(Roles.RESOLUTION_ROLE) {

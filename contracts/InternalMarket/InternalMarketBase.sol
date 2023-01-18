@@ -159,11 +159,6 @@ abstract contract InternalMarketBase is Context, IERC20Receiver {
         require(amount == 0, "TelediskoToken: amount exceeds offer");
     }
 
-    function _offerToDAO(address from, uint256 amount) internal virtual {
-        _beforeWithdrawToDAO(from, amount);
-        _erc20.transfer(DAO_ADDRESS, amount);
-    }
-
     function _withdraw(
         address from,
         address to,

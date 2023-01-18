@@ -10,10 +10,10 @@ contract TelediskoTokenBase is ERC20Upgradeable {
     IVoting internal _voting;
     IShareholderRegistry internal _shareholderRegistry;
 
-    function initialize(string memory name, string memory symbol)
-        public
-        virtual
-    {
+    function initialize(
+        string memory name,
+        string memory symbol
+    ) public virtual {
         __ERC20_init(name, symbol);
     }
 
@@ -22,16 +22,16 @@ contract TelediskoTokenBase is ERC20Upgradeable {
     // TODO: what happens to vesting tokens when someone loses the contributor status?
     // In theory they should be burned or added to a pool
     mapping(address => uint256) internal _vestingBalance;
+
     // mapping(address => uint256) internal _unlockedBalance;
 
     function _setVoting(IVoting voting) internal {
         _voting = voting;
     }
 
-    function _setShareholderRegistry(IShareholderRegistry shareholderRegistry)
-        internal
-        virtual
-    {
+    function _setShareholderRegistry(
+        IShareholderRegistry shareholderRegistry
+    ) internal virtual {
         _shareholderRegistry = shareholderRegistry;
     }
 
@@ -45,9 +45,9 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         require(
             !_shareholderRegistry.isAtLeast(
                 _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                _msgSender()
+                from
             ),
-            "TelediskoToken: contributors cannot transfer"
+            "TelediskoToken: contributor cannot transfer"
         );
     }
 
@@ -82,15 +82,10 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         emit VestingSet(account, amount);
     }
 
-
     // Tokens that are still in the vesting phase
-    function vestingBalanceOf(address account)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
+    function vestingBalanceOf(
+        address account
+    ) public view virtual returns (uint256) {
         return _vestingBalance[account];
     }
-
 }
