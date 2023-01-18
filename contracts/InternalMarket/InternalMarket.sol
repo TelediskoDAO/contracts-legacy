@@ -6,10 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../ShareholderRegistry/IShareholderRegistry.sol";
-import "./TokenGatewayBase.sol";
+import "./InternalMarketBase.sol";
 import { Roles } from "../extensions/Roles.sol";
 
-contract TokenGateway is TokenGatewayBase, AccessControl {
+contract InternalMarket is InternalMarketBase, AccessControl {
     constructor(IERC20 erc20, IShareholderRegistry shareholderRegistry) {
         _erc20 = erc20;
         _shareholderRegistry = shareholderRegistry;

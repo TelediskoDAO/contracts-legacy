@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "../ShareholderRegistry/IShareholderRegistry.sol";
 import "../extensions/IERC20Receiver.sol";
 
-abstract contract TokenGatewayBase is Context, IERC20Receiver {
+abstract contract InternalMarketBase is Context, IERC20Receiver {
     IShareholderRegistry internal _shareholderRegistry;
     IERC20 internal _erc20;
 

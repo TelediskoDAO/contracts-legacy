@@ -5,8 +5,8 @@ import { solidity } from "ethereum-waffle";
 import {
   ShareholderRegistryMock,
   ShareholderRegistryMock__factory,
-  TokenGateway,
-  TokenGateway__factory,
+  InternalMarket,
+  InternalMarket__factory,
   TelediskoTokenMock,
   TelediskoTokenMock__factory,
 } from "../typechain";
@@ -23,12 +23,12 @@ const AddressZero = ethers.constants.AddressZero;
 const DAY = 60 * 60 * 24;
 const WEEK = DAY * 7;
 
-describe("TokenGateway", () => {
+describe("InternalMarket", () => {
   let RESOLUTION_ROLE: string, OPERATOR_ROLE: string, ESCROW_ROLE: string;
   let token: TelediskoTokenMock;
   let token2: TelediskoTokenMock;
   let shareholderRegistry: ShareholderRegistryMock;
-  let gateway: TokenGateway;
+  let gateway: InternalMarket;
   let deployer: SignerWithAddress,
     account: SignerWithAddress,
     contributor: SignerWithAddress,
@@ -49,10 +49,10 @@ describe("TokenGateway", () => {
       deployer
     )) as ShareholderRegistryMock__factory;
 
-    const TokenGatewayFactory = (await ethers.getContractFactory(
-      "TokenGateway",
+    const InternalMarketFactory = (await ethers.getContractFactory(
+      "InternalMarket",
       deployer
-    )) as TokenGateway__factory;
+    )) as InternalMarket__factory;
 
     token = await TelediskoTokenMockFactory.deploy();
     await token.deployed();
@@ -63,14 +63,14 @@ describe("TokenGateway", () => {
     shareholderRegistry = await ShareholderRegistryMockFactory.deploy();
     await shareholderRegistry.deployed();
 
-    gateway = await TokenGatewayFactory.deploy(
+    gateway = await InternalMarketFactory.deploy(
       token.address,
       shareholderRegistry.address
     );
 
     ESCROW_ROLE = await roles.ESCROW_ROLE();
     await gateway.grantRole(ESCROW_ROLE, deployer.address);
-    await token.setTokenGateway(gateway.address);
+    await token.setInternalMarket(gateway.address);
 
     const contributorStatus = await shareholderRegistry.CONTRIBUTOR_STATUS();
     const shareholderStatus = await shareholderRegistry.SHAREHOLDER_STATUS();

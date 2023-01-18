@@ -22,7 +22,7 @@ contract TelediskoTokenMock is ERC20 {
         mockResult_balanceOfAt[account] = mockResult;
     }
 
-    function setTokenGateway(IERC20Receiver receiver) public {
+    function setInternalMarket(IERC20Receiver receiver) public {
         _receiver = receiver;
     }
 

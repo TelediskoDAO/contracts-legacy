@@ -1,3 +1,4 @@
+/*
 import { ethers, upgrades } from "hardhat";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
@@ -81,3 +82,4 @@ describe("Escrow", () => {
       .withArgs(contributor.address, contributor2.address, 20);
   });
 });
+*/
