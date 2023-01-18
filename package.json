@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/TelediskoDAO/contracts#readme",
   "devDependencies": {
+    "@defi-wonderland/smock": "^2.3.4",
     "@ethersproject/providers": "^5.6.8",
     "@nomiclabs/hardhat-ethers": "^2.1.0",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
