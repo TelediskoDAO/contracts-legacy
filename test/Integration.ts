@@ -7,8 +7,6 @@ import {
   Voting,
   TelediskoToken,
   ResolutionManager,
-  Escrow,
-  StableTokenMock,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
@@ -29,8 +27,6 @@ describe("Integration", () => {
   let token: TelediskoToken;
   let resolution: ResolutionManager;
   let shareholderRegistry: ShareholderRegistry;
-  let escrow: Escrow;
-  let stableTokenMock: StableTokenMock;
   let contributorStatus: string;
   let investorStatus: string;
   let deployer: SignerWithAddress,
@@ -42,8 +38,10 @@ describe("Integration", () => {
   beforeEach(async () => {
     [deployer, managingBoard, user1, user2, user3] = await ethers.getSigners();
     [deployer, managingBoard, user1, user2, user3] = await ethers.getSigners();
-    [voting, token, shareholderRegistry, resolution, escrow, stableTokenMock] =
-      await deployDAO(deployer, managingBoard);
+    [voting, token, shareholderRegistry, resolution] = await deployDAO(
+      deployer,
+      managingBoard
+    );
 
     contributorStatus = await shareholderRegistry.CONTRIBUTOR_STATUS();
     investorStatus = await shareholderRegistry.INVESTOR_STATUS();
@@ -633,55 +631,6 @@ describe("Integration", () => {
       expect(result.noticePeriod).equal(3);
       expect(result.votingPeriod).equal(6);
       expect(result.canBeNegative).equal(false);
-    });
-
-    it("allows to escrow dao tokens for another token", async () => {
-      await _prepareForVoting(user1, 10);
-      await _prepareForVoting(user2, 20);
-      await _prepareForVoting(user3, 30);
-
-      // user1 earns 100 tokens
-      _mintTokens(user1, 100);
-
-      // user1 offers 20 of them to the other contributors
-      await token.connect(user1).createOffer(20);
-
-      // user2 has 1000 tokens of a compatible currency
-      await stableTokenMock.mint(user2.address, 1000);
-
-      // user2 allows the escrow contract to withdraw funds
-      await stableTokenMock.connect(user2).approve(escrow.address, 100);
-
-      // user2 buys 5 tokens from user1
-      await expect(escrow.connect(user2).matchOffer(user1.address, 5))
-        .to.emit(token, "Transfer")
-        .withArgs(user1.address, user2.address, 5)
-        .to.emit(stableTokenMock, "Transfer")
-        .withArgs(user2.address, user1.address, 5);
-
-      // user3 has 1000 tokens of a compatible currency
-      await stableTokenMock.mint(user3.address, 1000);
-
-      // user3 allows the escrow contract to withdraw funds
-      await stableTokenMock.connect(user3).approve(escrow.address, 100);
-
-      // user3 buys 15 tokens from user1
-      await expect(escrow.connect(user3).matchOffer(user1.address, 15))
-        .to.emit(token, "Transfer")
-        .withArgs(user1.address, user3.address, 15)
-        .to.emit(stableTokenMock, "Transfer")
-        .withArgs(user3.address, user1.address, 15);
-
-      // user2 fails to buy other tokens
-      await expect(
-        escrow.connect(user2).matchOffer(user1.address, 5)
-      ).revertedWith("TelediskoToken: amount exceeds offer");
-
-      expect((await token.balanceOf(user1.address)).toNumber()).equal(
-        10 + 100 - 20
-      );
-      expect((await token.balanceOf(user2.address)).toNumber()).equal(20 + 5);
-      expect((await token.balanceOf(user3.address)).toNumber()).equal(30 + 15);
     });
   });
 });

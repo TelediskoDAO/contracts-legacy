@@ -1,15 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { parseEther } from "ethers/lib/utils";
 import { ethers, upgrades } from "hardhat";
-import {
-  Escrow,
-  Escrow__factory,
-  ShareholderRegistry,
-  TokenMock,
-  StableTokenMock__factory,
-  TelediskoToken,
-  Voting,
-} from "../../typechain";
+import { ShareholderRegistry, TelediskoToken, Voting } from "../../typechain";
 import { ResolutionManager } from "../../typechain";
 import {
   Voting__factory,
@@ -22,22 +14,11 @@ import { roles } from "./roles";
 export async function deployDAO(
   deployer: SignerWithAddress,
   managingBoard: SignerWithAddress
-): Promise<
-  [
-    Voting,
-    TelediskoToken,
-    ShareholderRegistry,
-    ResolutionManager,
-    Escrow,
-    TokenMock
-  ]
-> {
+): Promise<[Voting, TelediskoToken, ShareholderRegistry, ResolutionManager]> {
   let voting: Voting,
     token: TelediskoToken,
     shareholderRegistry: ShareholderRegistry,
-    resolution: ResolutionManager,
-    escrow: Escrow,
-    tokenMock: TokenMock;
+    resolution: ResolutionManager;
 
   const VotingFactory = (await ethers.getContractFactory(
     "Voting",
@@ -58,16 +39,6 @@ export async function deployDAO(
     "ResolutionManager",
     deployer
   )) as ResolutionManager__factory;
-
-  const EscrowFactory = (await ethers.getContractFactory(
-    "Escrow",
-    deployer
-  )) as Escrow__factory;
-
-  const StableTokenMockFactory = (await ethers.getContractFactory(
-    "TokenMock",
-    deployer
-  )) as StableTokenMock__factory;
 
   voting = (await upgrades.deployProxy(VotingFactory, {
     initializer: "initialize",
@@ -90,15 +61,9 @@ export async function deployDAO(
   )) as ShareholderRegistry;
   await shareholderRegistry.deployed();
 
-  tokenMock = await StableTokenMockFactory.deploy();
-  await tokenMock.deployed();
-
-  escrow = await EscrowFactory.deploy(token.address, tokenMock.address);
-  await escrow.deployed();
   const operatorRole = await roles.OPERATOR_ROLE();
   const resolutionRole = await roles.RESOLUTION_ROLE();
   const shareholderRegistryRole = await roles.SHAREHOLDER_REGISTRY_ROLE();
-  const escrowRole = await roles.ESCROW_ROLE();
 
   await shareholderRegistry.grantRole(operatorRole, deployer.address);
   await shareholderRegistry.grantRole(resolutionRole, deployer.address);
@@ -109,8 +74,6 @@ export async function deployDAO(
 
   await token.grantRole(operatorRole, deployer.address);
   await token.grantRole(resolutionRole, deployer.address);
-  await token.grantRole(escrowRole, deployer.address);
-  await token.grantRole(escrowRole, escrow.address);
 
   await voting.setShareholderRegistry(shareholderRegistry.address);
   await voting.setToken(token.address);
@@ -141,5 +104,5 @@ export async function deployDAO(
     managingBoard.address
   );
 
-  return [voting, token, shareholderRegistry, resolution, escrow, tokenMock];
+  return [voting, token, shareholderRegistry, resolution];
 }
