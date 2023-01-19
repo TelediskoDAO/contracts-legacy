@@ -4,11 +4,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
-import "../ShareholderRegistry/IShareholderRegistry.sol";
-import "../extensions/IERC20Receiver.sol";
 
-abstract contract InternalMarketBase is Context, IERC20Receiver {
-    IShareholderRegistry internal _shareholderRegistry;
+abstract contract InternalMarketBase is Context {
     IERC20 internal _erc20;
 
     struct Offer {
@@ -50,28 +47,13 @@ abstract contract InternalMarketBase is Context, IERC20Receiver {
         return offers.end++;
     }
 
-    function _setShareholderRegistry(
-        IShareholderRegistry shareholderRegistry
-    ) internal virtual {
-        _shareholderRegistry = shareholderRegistry;
-    }
-
     function _setERC20(IERC20 erc20) internal virtual {
         _erc20 = erc20;
     }
 
-    function _onERC20Received(address from, uint256 amount) internal virtual {
-        require(
-            _msgSender() == address(_erc20),
-            "OfferMatch: token not accepted"
-        );
-        require(
-            _shareholderRegistry.isAtLeast(
-                _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                from
-            ),
-            "OfferMatch: not a contributor"
-        );
+    function _makeOffer(uint256 amount) internal virtual {
+        address from = _msgSender();
+        _erc20.transferFrom(from, address(this), amount);
 
         uint256 expiration = block.timestamp + WAITING_TIME_EXTERNAL;
         uint128 id = _enqueue(_offers[from], Offer(expiration, amount));
@@ -112,13 +94,6 @@ abstract contract InternalMarketBase is Context, IERC20Receiver {
         uint256 amount
     ) internal virtual {
         _beforeWithdraw(from, amount, WAITING_TIME_EXTERNAL);
-    }
-
-    function _beforeWithdrawToDAO(
-        address from,
-        uint256 amount
-    ) internal virtual {
-        _beforeWithdraw(from, amount, WAITING_TIME_DAO);
     }
 
     function _beforeMatchOffer(
