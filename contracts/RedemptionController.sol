@@ -62,44 +62,46 @@ contract RedemptionController is Initializable, AccessControlUpgradeable {
         uint256 amount
     ) external onlyRole(TOKEN_MANAGER_ROLE) {
         // Find tokens minted ofer the last 3 months of activity, no earlier than 15 months
-        uint256 lastActivity = _mints[account][_mints[account].length - 1]
-            .timestamp;
+        if (_mints[account].length > 0) {
+            uint256 lastActivity = _mints[account][_mints[account].length - 1]
+                .timestamp;
 
-        // User can redeem tokens minted within 3 months since last activity
-        uint256 threshold = lastActivity - 30 days * 3;
-        // User cannot redeem tokens that were minted earlier than 15 months ago
-        uint256 earliestTimestamp = block.timestamp - 30 days * 15;
+            // User can redeem tokens minted within 3 months since last activity
+            uint256 threshold = lastActivity - 30 days * 3;
+            // User cannot redeem tokens that were minted earlier than 15 months ago
+            uint256 earliestTimestamp = block.timestamp - 30 days * 15;
 
-        if (threshold < earliestTimestamp) {
-            threshold = earliestTimestamp;
-        }
-
-        uint256 maxRedeemable;
-        Mint[] storage accountMints = _mints[account];
-        for (uint256 i = accountMints.length; i > 0; i--) {
-            Mint storage accountMint = accountMints[i - 1];
-            if (accountMint.timestamp >= threshold) {
-                if (amount >= accountMint.amount) {
-                    amount -= accountMint.amount;
-                    maxRedeemable += accountMint.amount;
-                    accountMint.amount = 0;
-                } else {
-                    maxRedeemable += amount;
-                    accountMint.amount -= amount;
-                    amount = 0;
-                }
-            } else {
-                break;
+            if (threshold < earliestTimestamp) {
+                threshold = earliestTimestamp;
             }
-        }
 
-        uint256 redemptionStarts = block.timestamp + TIME_TO_REDEMPTION;
-        Redeemable memory offerRedeemable = Redeemable(
-            maxRedeemable,
-            redemptionStarts,
-            redemptionStarts + redemptionPeriod
-        );
-        _redeemables[account].push(offerRedeemable);
+            uint256 maxRedeemable;
+            Mint[] storage accountMints = _mints[account];
+            for (uint256 i = accountMints.length; i > 0; i--) {
+                Mint storage accountMint = accountMints[i - 1];
+                if (accountMint.timestamp >= threshold) {
+                    if (amount >= accountMint.amount) {
+                        amount -= accountMint.amount;
+                        maxRedeemable += accountMint.amount;
+                        accountMint.amount = 0;
+                    } else {
+                        maxRedeemable += amount;
+                        accountMint.amount -= amount;
+                        amount = 0;
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            uint256 redemptionStarts = block.timestamp + TIME_TO_REDEMPTION;
+            Redeemable memory offerRedeemable = Redeemable(
+                maxRedeemable,
+                redemptionStarts,
+                redemptionStarts + redemptionPeriod
+            );
+            _redeemables[account].push(offerRedeemable);
+        }
     }
 
     function afterRedeem(

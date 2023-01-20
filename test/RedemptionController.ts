@@ -76,25 +76,44 @@ describe("RedemptionController", () => {
   });
 
   describe("redeemableBalance", async () => {
-    it("returns 0 if no tokens have been minted to the user", async () => {
+    async function expectBalance(amount: number) {
       const result = await redemptionController.redeemableBalance(
         account.address
       );
 
-      expect(result).equal(0);
+      expect(result).equal(amount);
+    }
+
+    it("returns 0 if no tokens have been minted to the user", async () => {
+      await expectBalance(0);
     });
 
     it("returns 0 if the user did not offer any token", async () => {
       await redemptionController.afterMint(account.address, 10);
 
-      const result = await redemptionController.redeemableBalance(
-        account.address
-      );
-
-      expect(result).equal(0);
+      await expectBalance(0);
     });
 
-    //describe("redeem logic", async () => {
+    describe("when 10 tokens are offered", async () => {
+      beforeEach(async () => {
+        await redemptionController.afterOffer(account.address, 10);
+      });
+
+      it("returns 0 after less than 60 days", async () => {
+        await timeTravel(59);
+        await mineEVMBlock();
+
+        await expectBalance(0);
+      });
+
+      it("returns 0 after 60 days", async () => {
+        await timeTravel(60);
+        await mineEVMBlock();
+
+        await expectBalance(0);
+      });
+    });
+
     describe("when 10 tokens are minted", async () => {
       beforeEach(async () => {
         await redemptionController.afterMint(account.address, 10);
@@ -106,6 +125,13 @@ describe("RedemptionController", () => {
             await redemptionController.afterOffer(account.address, 7);
           });
 
+          it("returns 0 after less than 60 days", async () => {
+            await timeTravel(59);
+            await mineEVMBlock();
+
+            await expectBalance(0);
+          });
+
           describe("and 60 days pass", async () => {
             beforeEach(async () => {
               await timeTravel(60);
@@ -113,42 +139,26 @@ describe("RedemptionController", () => {
             });
 
             it("returns 7 if not redeemed", async () => {
-              const result = await redemptionController.redeemableBalance(
-                account.address
-              );
-
-              expect(result).equal(7);
+              await expectBalance(7);
             });
 
             it("returns 0 if all 7 are redeemed", async () => {
               await redemptionController.afterRedeem(account.address, 7);
 
-              const result = await redemptionController.redeemableBalance(
-                account.address
-              );
-
-              expect(result).equal(0);
+              await expectBalance(0);
             });
 
             it("returns 2 if 5 are redeemed", async () => {
               await redemptionController.afterRedeem(account.address, 5);
 
-              const result = await redemptionController.redeemableBalance(
-                account.address
-              );
-
-              expect(result).equal(2);
+              await expectBalance(2);
             });
 
             it("returns 0 after the redemption period passed", async () => {
               await timeTravel(REDEMPTION_PERIOD_DAYS);
               await mineEVMBlock();
 
-              const result = await redemptionController.redeemableBalance(
-                account.address
-              );
-
-              expect(result).equal(0);
+              await expectBalance(0);
             });
           });
 
@@ -163,44 +173,28 @@ describe("RedemptionController", () => {
               await timeTravel(55);
               await mineEVMBlock();
 
-              const result = await redemptionController.redeemableBalance(
-                account.address
-              );
-
-              expect(result).equal(7);
+              await expectBalance(7);
             });
 
             it("returns 9 60 days later", async () => {
               await timeTravel(60);
               await mineEVMBlock();
 
-              const result = await redemptionController.redeemableBalance(
-                account.address
-              );
-
-              expect(result).equal(9);
+              await expectBalance(9);
             });
 
             it("returns 2 66 days later", async () => {
               await timeTravel(66);
               await mineEVMBlock();
 
-              const result = await redemptionController.redeemableBalance(
-                account.address
-              );
-
-              expect(result).equal(2);
+              await expectBalance(2);
             });
 
             it("returns 0 71 days later", async () => {
               await timeTravel(71);
               await mineEVMBlock();
 
-              const result = await redemptionController.redeemableBalance(
-                account.address
-              );
-
-              expect(result).equal(0);
+              await expectBalance(0);
             });
           });
         });
@@ -221,42 +215,26 @@ describe("RedemptionController", () => {
           });
 
           it("returns 11 if not redeemed", async () => {
-            const result = await redemptionController.redeemableBalance(
-              account.address
-            );
-
-            expect(result).equal(11);
+            await expectBalance(11);
           });
 
           it("returns 0 if all tokens (11) are redeemed", async () => {
             await redemptionController.afterRedeem(account.address, 11);
 
-            const result = await redemptionController.redeemableBalance(
-              account.address
-            );
-
-            expect(result).equal(0);
+            await expectBalance(0);
           });
 
           it("returns 6 if 5 (out of 11) is redeemed", async () => {
             await redemptionController.afterRedeem(account.address, 5);
 
-            const result = await redemptionController.redeemableBalance(
-              account.address
-            );
-
-            expect(result).equal(6);
+            await expectBalance(6);
           });
 
           it("returns 0 after the redemption period passed", async () => {
             await timeTravel(REDEMPTION_PERIOD_DAYS);
             await mineEVMBlock();
 
-            const result = await redemptionController.redeemableBalance(
-              account.address
-            );
-
-            expect(result).equal(0);
+            await expectBalance(0);
           });
         });
       });
@@ -276,42 +254,53 @@ describe("RedemptionController", () => {
           });
 
           it("returns 3 if not redeemed", async () => {
-            const result = await redemptionController.redeemableBalance(
-              account.address
-            );
-
-            expect(result).equal(3);
+            await expectBalance(3);
           });
 
           it("returns 0 if all tokens (3) are redeemed", async () => {
             await redemptionController.afterRedeem(account.address, 3);
 
-            const result = await redemptionController.redeemableBalance(
-              account.address
-            );
-
-            expect(result).equal(0);
+            await expectBalance(0);
           });
 
           it("returns 2 if 1 (out of 3) is redeemed", async () => {
             await redemptionController.afterRedeem(account.address, 1);
 
-            const result = await redemptionController.redeemableBalance(
-              account.address
-            );
-
-            expect(result).equal(2);
+            await expectBalance(2);
           });
 
           it("returns 0 after the redemption period passed", async () => {
             await timeTravel(REDEMPTION_PERIOD_DAYS);
             await mineEVMBlock();
 
-            const result = await redemptionController.redeemableBalance(
-              account.address
-            );
+            await expectBalance(0);
+          });
+        });
+      });
 
-            expect(result).equal(0);
+      describe("and 15 months pass", async () => {
+        beforeEach(async () => {
+          await timeTravel(15 * 30);
+          await mineEVMBlock();
+        });
+
+        describe("and 7 tokens are offered", async () => {
+          beforeEach(async () => {
+            await redemptionController.afterOffer(account.address, 7);
+          });
+
+          it("returns 0 after less than 60 days", async () => {
+            await timeTravel(59);
+            await mineEVMBlock();
+
+            await expectBalance(0);
+          });
+
+          it("returns 0 after 60 days", async () => {
+            await timeTravel(60);
+            await mineEVMBlock();
+
+            await expectBalance(0);
           });
         });
       });
