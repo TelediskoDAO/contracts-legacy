@@ -133,7 +133,25 @@ describe("TelediskoToken", () => {
       ).revertedWith("TelediskoToken: contributor cannot transfer");
     });
 
-    it("should not revert when called by anyone else", async () => {
+    it("should transfer when called by the market contract", async () => {
+      const market = account;
+
+      telediskoToken.setInternalMarket(market.address);
+      telediskoToken.mint(contributor.address, 10);
+
+      await telediskoToken
+        .connect(contributor)
+        .approve(market.address, ethers.constants.MaxUint256);
+      await expect(
+        telediskoToken
+          .connect(market)
+          .transferFrom(contributor.address, contributor2.address, 1)
+      )
+        .emit(telediskoToken, "Transfer")
+        .withArgs(contributor.address, contributor2.address, 1);
+    });
+
+    it("should transfer when called by anyone else", async () => {
       telediskoToken.mint(account.address, 10);
       await expect(
         telediskoToken.connect(account).transfer(contributor2.address, 1)

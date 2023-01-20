@@ -40,6 +40,12 @@ contract TelediskoToken is
         _setVoting(voting);
     }
 
+    function setInternalMarket(
+        InternalMarket internalMarket
+    ) external virtual onlyRole(Roles.OPERATOR_ROLE) {
+        _setInternalMarket(internalMarket);
+    }
+
     function setShareholderRegistry(
         IShareholderRegistry shareholderRegistry
     ) external virtual onlyRole(Roles.OPERATOR_ROLE) {

@@ -25,7 +25,7 @@ const DAY = 60 * 60 * 24;
 describe("Upgrade", () => {
   let voting: Voting;
   let token: TelediskoToken;
-  let shareholderRegistry: ShareholderRegistry;
+  let registry: ShareholderRegistry;
   let resolution: ResolutionManager;
   let managingBoardStatus: string,
     contributorStatus: string,
@@ -39,15 +39,15 @@ describe("Upgrade", () => {
 
   beforeEach(async () => {
     [deployer, managingBoard, user1, user2, user3] = await ethers.getSigners();
-    [voting, token, shareholderRegistry, resolution] = await deployDAO(
+    ({ voting, token, registry, resolution } = await deployDAO(
       deployer,
       managingBoard
-    );
+    ));
 
-    managingBoardStatus = await shareholderRegistry.MANAGING_BOARD_STATUS();
-    contributorStatus = await shareholderRegistry.CONTRIBUTOR_STATUS();
-    shareholderStatus = await shareholderRegistry.SHAREHOLDER_STATUS();
-    investorStatus = await shareholderRegistry.INVESTOR_STATUS();
+    managingBoardStatus = await registry.MANAGING_BOARD_STATUS();
+    contributorStatus = await registry.CONTRIBUTOR_STATUS();
+    shareholderStatus = await registry.SHAREHOLDER_STATUS();
+    investorStatus = await registry.INVESTOR_STATUS();
   });
 
   describe("upgrades", async () => {
@@ -61,8 +61,8 @@ describe("Upgrade", () => {
     }
 
     async function _prepareForVoting(user: SignerWithAddress, tokens: number) {
-      await shareholderRegistry.mint(user.address, parseEther("1"));
-      await shareholderRegistry.setStatus(contributorStatus, user.address);
+      await registry.mint(user.address, parseEther("1"));
+      await registry.setStatus(contributorStatus, user.address);
       await _mintTokens(user, tokens);
     }
 
@@ -138,12 +138,12 @@ describe("Upgrade", () => {
 
     it("should change contract logic", async () => {
       // Prevents also shareholder from transfering their tokens on TelediskoToken
-      await shareholderRegistry.mint(user1.address, parseEther("1"));
-      await shareholderRegistry.setStatus(contributorStatus, user1.address);
+      await registry.mint(user1.address, parseEther("1"));
+      await registry.setStatus(contributorStatus, user1.address);
       await _mintTokens(user1, 42);
 
-      await shareholderRegistry.mint(user2.address, parseEther("1"));
-      await shareholderRegistry.setStatus(shareholderStatus, user2.address);
+      await registry.mint(user2.address, parseEther("1"));
+      await registry.setStatus(shareholderStatus, user2.address);
       await _mintTokens(user2, 42);
 
       await expect(

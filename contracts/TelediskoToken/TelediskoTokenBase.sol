@@ -4,10 +4,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "../Voting/IVoting.sol";
+import "../InternalMarket/InternalMarket.sol";
 import "../ShareholderRegistry/IShareholderRegistry.sol";
 
 contract TelediskoTokenBase is ERC20Upgradeable {
     IVoting internal _voting;
+    InternalMarket internal _internalMarket;
     IShareholderRegistry internal _shareholderRegistry;
 
     function initialize(
@@ -24,6 +26,10 @@ contract TelediskoTokenBase is ERC20Upgradeable {
     mapping(address => uint256) internal _vestingBalance;
 
     // mapping(address => uint256) internal _unlockedBalance;
+
+    function _setInternalMarket(InternalMarket internalMarket) internal {
+        _internalMarket = internalMarket;
+    }
 
     function _setVoting(IVoting voting) internal {
         _voting = voting;
@@ -43,10 +49,11 @@ contract TelediskoTokenBase is ERC20Upgradeable {
         super._beforeTokenTransfer(from, to, amount);
 
         require(
-            !_shareholderRegistry.isAtLeast(
-                _shareholderRegistry.CONTRIBUTOR_STATUS(),
-                from
-            ),
+            _msgSender() == address(_internalMarket) ||
+                !_shareholderRegistry.isAtLeast(
+                    _shareholderRegistry.CONTRIBUTOR_STATUS(),
+                    from
+                ),
             "TelediskoToken: contributor cannot transfer"
         );
     }
