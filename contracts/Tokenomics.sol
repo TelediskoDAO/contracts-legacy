@@ -134,7 +134,7 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
             }
         }
 
-        uint256 maxRedeemable = _maxCapitlizableBalance(to);
+        uint256 maxRedeemable = _maxRedeemableBalance(to);
         if (redeemable > maxRedeemable) {
             return maxRedeemable;
         }
@@ -142,7 +142,7 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
         return redeemable;
     }
 
-    function _maxCapitlizableBalance(
+    function _maxRedeemableBalance(
         address to
     ) internal view returns (uint256 redeemable) {
         if (_mintedTokens[to].length > 0) {
@@ -164,14 +164,33 @@ contract Tokenomics is Initializable, AccessControlUpgradeable {
                 threshold < _lastRedeemed[to];
             }
 
-            for (uint256 i = _mintedTokens[to].length; i > 0; i--) {
-                uint256 timestamp = _mintedTokens[to][i - 1].timestamp;
+            uint256 redeemableVault;
+            for (
+                uint256 i = _vaultedTokens[to].length;
+                i > _vaultedTokensFirst[to];
+                i--
+            ) {
+                uint256 timestamp = _vaultedTokens[to][i - 1].timestamp;
                 if (timestamp >= threshold) {
-                    redeemable += _mintedTokens[to][i - 1].amount;
+                    redeemableVault += _vaultedTokens[to][i - 1].amount;
                 } else {
                     break;
                 }
             }
+
+            uint256 redeemableMint;
+            for (uint256 i = _mintedTokens[to].length; i > 0; i--) {
+                uint256 timestamp = _mintedTokens[to][i - 1].timestamp;
+                if (timestamp >= threshold) {
+                    redeemableMint += _mintedTokens[to][i - 1].amount;
+                } else {
+                    break;
+                }
+            }
+
+            redeemable = redeemableMint > redeemableVault
+                ? redeemableVault
+                : redeemableMint;
         }
     }
 }
