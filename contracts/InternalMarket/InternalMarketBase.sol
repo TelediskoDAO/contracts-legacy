@@ -51,8 +51,7 @@ abstract contract InternalMarketBase is Context {
         _erc20 = erc20;
     }
 
-    function _makeOffer(uint256 amount) internal virtual {
-        address from = _msgSender();
+    function _makeOffer(address from, uint256 amount) internal virtual {
         _erc20.transferFrom(from, address(this), amount);
 
         uint256 expiration = block.timestamp + WAITING_TIME_EXTERNAL;
@@ -86,7 +85,7 @@ abstract contract InternalMarketBase is Context {
             }
         }
 
-        require(amount == 0, "TelediskoToken: amount exceeds withdraw amount");
+        require(amount == 0, "InternalMarket: amount exceeds withdraw amount");
     }
 
     function _beforeWithdrawToExternal(
@@ -131,7 +130,7 @@ abstract contract InternalMarketBase is Context {
             }
         }
 
-        require(amount == 0, "TelediskoToken: amount exceeds offer");
+        require(amount == 0, "InternalMarket: amount exceeds offer");
     }
 
     function _withdraw(

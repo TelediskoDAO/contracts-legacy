@@ -8,8 +8,8 @@ import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
 import { roles } from "./utils/roles";
 import { IERC20, InternalMarket, InternalMarket__factory } from "../typechain";
 
-chai.use(solidity);
 chai.use(smock.matchers);
+chai.use(solidity);
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
@@ -22,10 +22,11 @@ describe("InternalMarket", async () => {
   let RESOLUTION_ROLE: string, ESCROW_ROLE: string;
   let token: FakeContract<IERC20>;
   let internalMarket: InternalMarket;
-  let deployer: SignerWithAddress,
-    account: SignerWithAddress,
-    alice: SignerWithAddress,
-    bob: SignerWithAddress;
+  let deployer: SignerWithAddress;
+  let account: SignerWithAddress;
+  let alice: SignerWithAddress;
+  let bob: SignerWithAddress;
+  let WAITING_TIME_EXTERNAL: number;
 
   beforeEach(async () => {
     [deployer, account, alice, bob] = await ethers.getSigners();
@@ -43,17 +44,49 @@ describe("InternalMarket", async () => {
 
     ESCROW_ROLE = await roles.ESCROW_ROLE();
     await internalMarket.grantRole(ESCROW_ROLE, deployer.address);
+
+    WAITING_TIME_EXTERNAL = (
+      await internalMarket.WAITING_TIME_EXTERNAL()
+    ).toNumber();
+
+    // make transferFrom always succeed
+    token.transferFrom.returns();
   });
 
-  describe("offers", async () => {
-    describe("makeOffer", async () => {
-      it("should emit an OfferCreated event", async () => {
-        token.transferFrom.returns();
-      });
-      it("should transfer the given amount of token from the erc20", async () => {});
+  describe("makeOffer", async () => {
+    it("should emit an OfferCreated event", async () => {
+      await expect(internalMarket.makeOffer(1000))
+        .to.emit(internalMarket, "OfferCreated")
+        .withArgs(
+          0,
+          deployer.address,
+          1000,
+          (await getEVMTimestamp()) + WAITING_TIME_EXTERNAL
+        );
     });
+
+    it("should transfer the given amount of token from the erc20", async () => {
+      await internalMarket.makeOffer(1000);
+      expect(token.transferFrom).calledWith(
+        deployer.address,
+        internalMarket.address,
+        1000
+      );
+    });
+
     /*
-    describe("match", async () => {
+    describe("matchOffer", async () => {
+      it("should match an existing offer", async () => {
+        await internalMarket.connect(alice).makeOffer(1000);
+        await expect(
+          internalMarket.matchOffer(alice.address, bob.address, 1000)
+        )
+          .to.emit(internalMarket, "OfferMatched")
+          .withArgs(0, alice.address, bob.address, 1000);
+      });
+    });
+    */
+    describe("matchOffer", async () => {
       let ts: number;
 
       beforeEach(async () => {
@@ -62,93 +95,62 @@ describe("InternalMarket", async () => {
         // - An offer made on `ts`
         // - An offer made on `ts + 2 days`
         // - An offer made on `ts + 4 days`
-        await telediskoToken.mintVesting(contributor.address, 1000);
-        await telediskoToken.mint(contributor.address, 100);
-        await telediskoToken.connect(contributor).createOffer(11);
+        await internalMarket.connect(alice).makeOffer(11);
         ts = await getEVMTimestamp();
 
         // Move to the next day and make another offer
         await setEVMTimestamp(ts + DAY * 2);
-        await telediskoToken.connect(contributor).createOffer(25);
+        await internalMarket.connect(alice).makeOffer(25);
 
         // Move to the next day and make another offer
         await setEVMTimestamp(ts + DAY * 4);
-        await telediskoToken.connect(contributor).createOffer(35);
+        await internalMarket.connect(alice).makeOffer(35);
       });
 
       it("should match the oldest active offer", async () => {
-        await expect(
-          telediskoToken.matchOffer(
-            contributor.address,
-            contributor2.address,
-            11
-          )
-        )
-          .emit(telediskoToken, "OfferMatched")
-          .withArgs(0, contributor.address, contributor2.address, 11)
-          .emit(telediskoToken, "Transfer")
-          .withArgs(contributor.address, contributor2.address, 11);
+        await expect(internalMarket.matchOffer(alice.address, bob.address, 11))
+          .emit(internalMarket, "OfferMatched")
+          .withArgs(0, alice.address, bob.address, 11);
+        expect(token.transfer).calledWith(bob.address, 11);
       });
 
       it("should match the oldest active offer and ignore the expired ones", async () => {
         // Make offer `11` expire
         await setEVMTimestamp(ts + WEEK + DAY);
-        await expect(
-          telediskoToken.matchOffer(
-            contributor.address,
-            contributor2.address,
-            25
-          )
-        )
-          .emit(telediskoToken, "OfferExpired")
-          .withArgs(0, contributor.address, 11)
-          .emit(telediskoToken, "OfferMatched")
-          .withArgs(1, contributor.address, contributor2.address, 25)
-          .emit(telediskoToken, "Transfer")
-          .withArgs(contributor.address, contributor2.address, 25);
+        await expect(internalMarket.matchOffer(alice.address, bob.address, 25))
+          .emit(internalMarket, "OfferExpired")
+          .withArgs(0, alice.address, 11)
+          .emit(internalMarket, "OfferMatched")
+          .withArgs(1, alice.address, bob.address, 25);
+        expect(token.transfer).calledWith(bob.address, 25);
       });
 
       it("should match multiple active offers from the old one to the new one", async () => {
         await expect(
-          telediskoToken.matchOffer(
-            contributor.address,
-            contributor2.address,
-            11 + 25 + 1
-          )
+          internalMarket.matchOffer(alice.address, bob.address, 11 + 25 + 1)
         )
-          .emit(telediskoToken, "OfferMatched")
-          .withArgs(0, contributor.address, contributor2.address, 11)
-          .emit(telediskoToken, "OfferMatched")
-          .withArgs(1, contributor.address, contributor2.address, 25)
-          .emit(telediskoToken, "OfferMatched")
-          .withArgs(2, contributor.address, contributor2.address, 1)
-          .emit(telediskoToken, "Transfer")
-          .withArgs(contributor.address, contributor2.address, 11 + 25 + 1);
+          .emit(internalMarket, "OfferMatched")
+          .withArgs(0, alice.address, bob.address, 11)
+          .emit(internalMarket, "OfferMatched")
+          .withArgs(1, alice.address, bob.address, 25)
+          .emit(internalMarket, "OfferMatched");
+        expect(token.transfer).calledWith(bob.address, 11 + 25 + 1);
       });
 
       it("should not allow to match more than what's available", async () => {
         await expect(
-          telediskoToken.matchOffer(
-            contributor.address,
-            contributor2.address,
-            11 + 25 + 36
-          )
-        ).revertedWith("TelediskoToken: amount exceeds offer");
+          internalMarket.matchOffer(alice.address, bob.address, 11 + 25 + 36)
+        ).revertedWith("InternalMarket: amount exceeds offer");
       });
 
       it("should not allow to match more than what's available when old offers expire", async () => {
         // Make offer `11` and `15` expire
         await setEVMTimestamp(ts + WEEK + DAY * 3);
         await expect(
-          telediskoToken.matchOffer(
-            contributor.address,
-            contributor2.address,
-            36
-          )
-        ).revertedWith("TelediskoToken: amount exceeds offer");
+          internalMarket.matchOffer(alice.address, bob.address, 36)
+        ).revertedWith("InternalMarket: amount exceeds offer");
       });
     });
-    */
 
     /*
     describe("balances", async () => {
@@ -162,18 +164,18 @@ describe("InternalMarket", async () => {
         // - An offer made on `ts`
         // - An offer made on `ts + 2 days`
         // - An offer made on `ts + 4 days`
-        await telediskoToken.mintVesting(contributor.address, 1000);
-        await telediskoToken.mint(contributor.address, 100);
+        await telediskoToken.mintVesting(alice.address, 1000);
+        await telediskoToken.mint(alice.address, 100);
         ts = await getEVMTimestamp();
-        await telediskoToken.connect(contributor).createOffer(11);
+        await telediskoToken.connect(alice).createOffer(11);
 
         // Move to the next day and make another offer
         await setEVMTimestamp(ts + DAY * 2);
-        await telediskoToken.connect(contributor).createOffer(25);
+        await telediskoToken.connect(alice).createOffer(25);
 
         // Move to the next day and make another offer
         await setEVMTimestamp(ts + DAY * 4);
-        await telediskoToken.connect(contributor).createOffer(35);
+        await telediskoToken.connect(alice).createOffer(35);
       });
 
       describe("offeredBalanceOf", async () => {
@@ -181,8 +183,8 @@ describe("InternalMarket", async () => {
           await mineEVMBlock();
           expect(
             await telediskoToken
-              .connect(contributor)
-              .offeredBalanceOf(contributor.address)
+              .connect(alice)
+              .offeredBalanceOf(alice.address)
           ).equal(11 + 25 + 35);
         });
 
@@ -192,15 +194,15 @@ describe("InternalMarket", async () => {
           await mineEVMBlock();
           expect(
             await telediskoToken
-              .connect(contributor)
-              .offeredBalanceOf(contributor.address)
+              .connect(alice)
+              .offeredBalanceOf(alice.address)
           ).equal(25 + 35);
         });
 
-        it("should be equal to 0 for non contributors", async () => {
-          await telediskoToken.mint(nonContributor.address, 100);
+        it("should be equal to 0 for non alices", async () => {
+          await telediskoToken.mint(nonAlice.address, 100);
           const result = await telediskoToken.offeredBalanceOf(
-            nonContributor.address
+            nonAlice.address
           );
 
           expect(result).equal(0);
@@ -208,12 +210,12 @@ describe("InternalMarket", async () => {
       });
 
       describe("unlockedBalanceOf", async () => {
-        it("should be equal to zero when contributor just started offering their tokens", async () => {
+        it("should be equal to zero when alice just started offering their tokens", async () => {
           await mineEVMBlock();
           expect(
             await telediskoToken
-              .connect(contributor)
-              .unlockedBalanceOf(contributor.address)
+              .connect(alice)
+              .unlockedBalanceOf(alice.address)
           ).equal(0);
         });
 
@@ -223,15 +225,15 @@ describe("InternalMarket", async () => {
           await mineEVMBlock();
           expect(
             await telediskoToken
-              .connect(contributor)
-              .unlockedBalanceOf(contributor.address)
+              .connect(alice)
+              .unlockedBalanceOf(alice.address)
           ).equal(11 + 25);
         });
 
-        it("should be equal to balance for non contributors", async () => {
-          await telediskoToken.mint(nonContributor.address, 100);
+        it("should be equal to balance for non alices", async () => {
+          await telediskoToken.mint(nonAlice.address, 100);
           const result = await telediskoToken.unlockedBalanceOf(
-            nonContributor.address
+            nonAlice.address
           );
 
           expect(result).equal(100);
@@ -243,8 +245,8 @@ describe("InternalMarket", async () => {
           await mineEVMBlock();
           expect(
             await telediskoToken
-              .connect(contributor)
-              .lockedBalanceOf(contributor.address)
+              .connect(alice)
+              .lockedBalanceOf(alice.address)
           ).equal(1000 + 100);
         });
 
@@ -254,21 +256,20 @@ describe("InternalMarket", async () => {
           await mineEVMBlock();
           expect(
             await telediskoToken
-              .connect(contributor)
-              .lockedBalanceOf(contributor.address)
+              .connect(alice)
+              .lockedBalanceOf(alice.address)
           ).equal(1000 + 100 - 11 - 25);
         });
 
-        it("should be equal to 0 for non contributors", async () => {
-          await telediskoToken.mint(nonContributor.address, 100);
+        it("should be equal to 0 for non alices", async () => {
+          await telediskoToken.mint(nonAlice.address, 100);
           const result = await telediskoToken.lockedBalanceOf(
-            nonContributor.address
+            nonAlice.address
           );
 
           expect(result).equal(0);
         });
       });
-    });
   */
   });
 });

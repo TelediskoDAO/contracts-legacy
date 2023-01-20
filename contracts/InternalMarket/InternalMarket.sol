@@ -15,8 +15,8 @@ contract InternalMarket is InternalMarketBase, AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
-    function makeOffer(uint256 amount) internal virtual {
-        _makeOffer(amount);
+    function makeOffer(uint256 amount) public virtual {
+        _makeOffer(_msgSender(), amount);
     }
 
     function matchOffer(
