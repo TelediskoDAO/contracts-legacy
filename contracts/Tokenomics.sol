@@ -7,6 +7,20 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import { Roles } from "./extensions/Roles.sol";
 import "hardhat/console.sol";
 
+// Redeemable tokens are decided on Offer
+// - when user offers, we check how many tokens are eligible for redemption (3 months, 15 months rule)
+//   and mark it as redeemable in 60 days
+// - when user offers, we check how many tokens are in the vault and how many are currently redeemable. We take the redeemable amount
+//   straight into the vault, the rest remains locked for 7 days
+// - when 60 days pass, the token are redeemable for 10 days
+//    - if the user redeems, tokens are subtracted
+//    - if the user moves the tokens to the outside or to the contributor wallet, tokens are subtracted
+//    - if the user forgets, the tokens are not redeemable. they can only be moved outside the vault (contributor or 2ndary)
+// - when the 10 days expire
+//    -
+
+// The contract has to tell how many tokens are redeemable today
+//
 contract Tokenomics is Initializable, AccessControlUpgradeable {
     bytes32 public constant TOKEN_MANAGER_ROLE =
         keccak256("TOKEN_MANAGER_ROLE");
