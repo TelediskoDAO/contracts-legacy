@@ -79,7 +79,7 @@ contract InternalMarketBase is Context {
             }
         }
 
-        require(amount == 0, "InternalMarket: amount exceeds withdraw amount");
+        require(amount == 0, "InternalMarket: amount exceeds balance");
     }
 
     function _beforeMatchOffer(

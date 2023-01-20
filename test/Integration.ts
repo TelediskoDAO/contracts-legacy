@@ -420,7 +420,7 @@ describe("Integration", async () => {
     // The external address transfers 1 token back to A
     // Resolution is created
     // A votes yes, B votes no. Resolution passes
-    it.only("token economics + voting", async () => {
+    it("token economics + voting", async () => {
       await _makeContributor(user1, 49);
       await _makeContributor(user2, 51);
 
@@ -438,12 +438,8 @@ describe("Integration", async () => {
         token.connect(user2).transfer(user3.address, 2)
       ).revertedWith("TelediskoToken: contributor cannot transfer");
 
-      console.log("1");
       await market.connect(user2).makeOffer(2);
-
-      console.log("2");
       await market.matchOffer(user2.address, user1.address, 1);
-      console.log("3");
 
       const resolutionId2 = await _prepareResolution(6);
       await _makeVotable(resolutionId2);
@@ -464,10 +460,10 @@ describe("Integration", async () => {
 
       // Tries first to transfer 2 tokens (becuase the user forgot that 1 was sold to user 1)
       await expect(
-        token.connect(user2).transfer(user3.address, 2)
-      ).revertedWith("TelediskoToken: contributor cannot transfer");
+        market.connect(user2).withdraw(user3.address, 2)
+      ).revertedWith("InternalMarket: amount exceeds balance");
       // Tries now to transfer the right amount
-      await token.connect(user2).transfer(user3.address, 1);
+      await market.connect(user2).withdraw(user3.address, 1);
       // The external user transfers the token back to user 1, because they can
       await token.connect(user3).transfer(user1.address, 1);
 
@@ -522,8 +518,8 @@ describe("Integration", async () => {
       await market.matchOffer(user2.address, user3.address, 15);
 
       await expect(
-        token.connect(user3).transfer(user1.address, 10)
-      ).revertedWith("TelediskoToken: contributor cannot transfer");
+        market.connect(user3).withdraw(user1.address, 10)
+      ).revertedWith("InternalMarket: amount exceeds balance");
 
       // 5 days pass (first offer expires)
       offerExpires = (await getEVMTimestamp()) + 5 * DAY;
@@ -532,8 +528,8 @@ describe("Integration", async () => {
 
       // Still fails, because first offers was already drained
       await expect(
-        token.connect(user2).transfer(user3.address, 5)
-      ).revertedWith("TelediskoToken: contributor cannot transfer");
+        market.connect(user2).withdraw(user3.address, 5)
+      ).revertedWith("InternalMarket: amount exceeds balance");
 
       /*
       expect((await token.lockedBalanceOf(user1.address)).toNumber()).equal(80);
@@ -565,9 +561,9 @@ describe("Integration", async () => {
 
       // first tries wrong amount
       await expect(
-        token.connect(user2).transfer(user3.address, 10)
-      ).revertedWith("TelediskoToken: contributor cannot transfer");
-      token.connect(user2).transfer(user3.address, 5);
+        market.connect(user2).withdraw(user3.address, 10)
+      ).revertedWith("InternalMarket: amount exceeds balance");
+      market.connect(user2).withdraw(user3.address, 5);
 
       /*
       expect((await token.lockedBalanceOf(user2.address)).toNumber()).equal(40);
