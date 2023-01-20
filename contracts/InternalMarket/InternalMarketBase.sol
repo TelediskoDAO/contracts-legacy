@@ -4,12 +4,13 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
+import "hardhat/console.sol";
 
-abstract contract InternalMarketBase is Context {
+contract InternalMarketBase is Context {
     IERC20 internal _erc20;
 
     struct Offer {
-        uint256 createdAt;
+        uint256 expiredAt;
         uint256 amount;
     }
 
@@ -31,13 +32,10 @@ abstract contract InternalMarketBase is Context {
     event OfferMatched(uint128 id, address from, address to, uint256 amount);
 
     uint256 public constant WAITING_TIME_EXTERNAL = 7 days;
-    uint256 public constant WAITING_TIME_DAO = 60 days;
 
     mapping(address => Offers) internal _offers;
 
     mapping(address => uint256) internal _vaultContributors;
-
-    address public DAO_ADDRESS = address(0x00);
 
     function _enqueue(
         Offers storage offers,
@@ -54,25 +52,21 @@ abstract contract InternalMarketBase is Context {
     function _makeOffer(address from, uint256 amount) internal virtual {
         _erc20.transferFrom(from, address(this), amount);
 
-        uint256 expiration = block.timestamp + WAITING_TIME_EXTERNAL;
-        uint128 id = _enqueue(_offers[from], Offer(expiration, amount));
+        uint256 expiredAt = block.timestamp + WAITING_TIME_EXTERNAL;
+        uint128 id = _enqueue(_offers[from], Offer(expiredAt, amount));
 
         _vaultContributors[from] += amount;
 
-        emit OfferCreated(id, from, amount, expiration);
+        emit OfferCreated(id, from, amount, expiredAt);
     }
 
-    function _beforeWithdraw(
-        address from,
-        uint256 amount,
-        uint256 referenceExpiration
-    ) internal virtual {
+    function _beforeWithdraw(address from, uint256 amount) internal virtual {
         Offers storage offers = _offers[from];
 
         for (uint128 i = offers.start; i < offers.end && amount > 0; i++) {
             Offer storage offer = offers.offer[i];
 
-            if (block.timestamp > offer.createdAt + referenceExpiration) {
+            if (block.timestamp > offer.expiredAt) {
                 if (amount > offer.amount) {
                     amount -= offer.amount;
                     delete offers.offer[offers.start++];
@@ -88,13 +82,6 @@ abstract contract InternalMarketBase is Context {
         require(amount == 0, "InternalMarket: amount exceeds withdraw amount");
     }
 
-    function _beforeWithdrawToExternal(
-        address from,
-        uint256 amount
-    ) internal virtual {
-        _beforeWithdraw(from, amount, WAITING_TIME_EXTERNAL);
-    }
-
     function _beforeMatchOffer(
         address from,
         address to,
@@ -104,8 +91,7 @@ abstract contract InternalMarketBase is Context {
 
         for (uint128 i = offers.start; i < offers.end && amount > 0; i++) {
             Offer storage offer = offers.offer[i];
-
-            if (block.timestamp < offer.createdAt + WAITING_TIME_EXTERNAL) {
+            if (block.timestamp < offer.expiredAt) {
                 // If offer is active check if the amount is bigger than the
                 // current offer.
                 if (amount >= offer.amount) {
@@ -138,7 +124,7 @@ abstract contract InternalMarketBase is Context {
         address to,
         uint256 amount
     ) internal virtual {
-        _beforeWithdrawToExternal(from, amount);
+        _beforeWithdraw(from, amount);
         _erc20.transfer(to, amount);
     }
 
@@ -162,7 +148,7 @@ abstract contract InternalMarketBase is Context {
         for (uint128 i = offers.start; i < offers.end; i++) {
             Offer storage offer = offers.offer[i];
 
-            if (block.timestamp > offer.createdAt + WAITING_TIME_EXTERNAL) {
+            if (block.timestamp > offer.expiredAt) {
                 unlocked += offer.amount;
             }
         }
