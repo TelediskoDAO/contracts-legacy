@@ -7,19 +7,10 @@ import "../extensions/Roles.sol";
 
 contract TelediskoTokenV2Mock is TelediskoToken {
     function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
+        address,
+        address,
+        uint256
     ) internal virtual override {
-        super._beforeTokenTransfer(from, to, amount);
-        if (
-            _shareholderRegistry.getStatus(from) ==
-            _shareholderRegistry.SHAREHOLDER_STATUS()
-        ) {
-            require(
-                false,
-                "TelediskoToken: transfer amount exceeds unlocked tokens"
-            );
-        }
+        require(false, "TelediskoTokenV2: nopety nope");
     }
 }

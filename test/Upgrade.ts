@@ -23,23 +23,22 @@ const { expect } = chai;
 const DAY = 60 * 60 * 24;
 
 describe("Upgrade", () => {
-  let voting: Voting;
   let token: TelediskoToken;
   let registry: ShareholderRegistry;
   let resolution: ResolutionManager;
-  let managingBoardStatus: string,
-    contributorStatus: string,
-    shareholderStatus: string,
-    investorStatus: string;
-  let deployer: SignerWithAddress,
-    managingBoard: SignerWithAddress,
-    user1: SignerWithAddress,
-    user2: SignerWithAddress,
-    user3: SignerWithAddress;
+  let managingBoardStatus: string;
+  let contributorStatus: string;
+  let shareholderStatus: string;
+  let investorStatus: string;
+  let deployer: SignerWithAddress;
+  let managingBoard: SignerWithAddress;
+  let user1: SignerWithAddress;
+  let user2: SignerWithAddress;
+  let user3: SignerWithAddress;
 
   beforeEach(async () => {
     [deployer, managingBoard, user1, user2, user3] = await ethers.getSigners();
-    ({ voting, token, registry, resolution } = await deployDAO(
+    ({ token, registry, resolution } = await deployDAO(
       deployer,
       managingBoard
     ));
@@ -148,7 +147,7 @@ describe("Upgrade", () => {
 
       await expect(
         token.connect(user1).transfer(user2.address, 1)
-      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+      ).revertedWith("TelediskoToken: contributor cannot transfer");
 
       await token.connect(user2).transfer(user1.address, 1);
 
@@ -164,11 +163,11 @@ describe("Upgrade", () => {
 
       await expect(
         token.connect(user1).transfer(user2.address, 1)
-      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+      ).revertedWith("TelediskoTokenV2: nopety nope");
 
       await expect(
         token.connect(user2).transfer(user1.address, 1)
-      ).revertedWith("TelediskoToken: transfer amount exceeds unlocked tokens");
+      ).revertedWith("TelediskoTokenV2: nopety nope");
     });
 
     it("should change events", async () => {
