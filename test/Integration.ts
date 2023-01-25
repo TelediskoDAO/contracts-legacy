@@ -531,28 +531,17 @@ describe("Integration", async () => {
         market.connect(user2).withdraw(user3.address, 5)
       ).revertedWith("InternalMarket: amount exceeds balance");
 
-      /*
-      expect((await token.lockedBalanceOf(user1.address)).toNumber()).equal(80);
-      expect((await token.balanceOf(user1.address)).toNumber()).equal(80);
-      expect((await token.offeredBalanceOf(user1.address)).toNumber()).equal(0);
-      expect((await token.unlockedBalanceOf(user1.address)).toNumber()).equal(
-        0
-      );
+      expect(await token.balanceOf(user1.address)).equal(80);
+      expect(await market.offeredBalanceOf(user1.address)).equal(0);
+      expect(await market.withdrawableBalanceOf(user1.address)).equal(0);
 
-      expect((await token.lockedBalanceOf(user2.address)).toNumber()).equal(45);
-      expect((await token.balanceOf(user2.address)).toNumber()).equal(45);
-      expect((await token.offeredBalanceOf(user2.address)).toNumber()).equal(5);
-      expect((await token.unlockedBalanceOf(user2.address)).toNumber()).equal(
-        0
-      );
+      expect(await token.balanceOf(user2.address)).equal(40);
+      expect(await market.offeredBalanceOf(user2.address)).equal(5);
+      expect(await market.withdrawableBalanceOf(user2.address)).equal(0);
 
-      expect((await token.lockedBalanceOf(user3.address)).toNumber()).equal(21);
-      expect((await token.balanceOf(user3.address)).toNumber()).equal(26);
-      expect((await token.offeredBalanceOf(user3.address)).toNumber()).equal(0);
-      expect((await token.unlockedBalanceOf(user3.address)).toNumber()).equal(
-        5
-      );
-      */
+      expect(await token.balanceOf(user3.address)).equal(21);
+      expect(await market.offeredBalanceOf(user3.address)).equal(0);
+      expect(await market.withdrawableBalanceOf(user3.address)).equal(5);
 
       // 3 days pass (last user2 offer expires)
       offerExpires = (await getEVMTimestamp()) + 3 * DAY;
@@ -563,23 +552,15 @@ describe("Integration", async () => {
       await expect(
         market.connect(user2).withdraw(user3.address, 10)
       ).revertedWith("InternalMarket: amount exceeds balance");
-      market.connect(user2).withdraw(user3.address, 5);
+      await market.connect(user2).withdraw(user3.address, 5);
 
-      /*
-      expect((await token.lockedBalanceOf(user2.address)).toNumber()).equal(40);
-      expect((await token.balanceOf(user2.address)).toNumber()).equal(40);
-      expect((await token.offeredBalanceOf(user2.address)).toNumber()).equal(0);
-      expect((await token.unlockedBalanceOf(user2.address)).toNumber()).equal(
-        0
-      );
+      expect(await token.balanceOf(user2.address)).equal(40);
+      expect(await market.offeredBalanceOf(user2.address)).equal(0);
+      expect(await market.withdrawableBalanceOf(user2.address)).equal(0);
 
-      expect((await token.lockedBalanceOf(user3.address)).toNumber()).equal(26);
-      expect((await token.balanceOf(user3.address)).toNumber()).equal(31);
-      expect((await token.offeredBalanceOf(user3.address)).toNumber()).equal(0);
-      expect((await token.unlockedBalanceOf(user3.address)).toNumber()).equal(
-        5
-      );
-      */
+      expect(await token.balanceOf(user3.address)).equal(26);
+      expect(await market.offeredBalanceOf(user3.address)).equal(0);
+      expect(await market.withdrawableBalanceOf(user3.address)).equal(5);
     });
 
     it("Mints tokens to a contributor after a resolution passes", async () => {

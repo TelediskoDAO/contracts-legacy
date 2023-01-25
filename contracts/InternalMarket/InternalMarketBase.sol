@@ -70,13 +70,13 @@ contract InternalMarketBase is Context {
             if (block.timestamp > offer.expiredAt) {
                 if (amount > offer.amount) {
                     amount -= offer.amount;
+                    _vaultContributors[from] -= offer.amount;
                     delete offers.offer[offers.start++];
                 } else {
                     offer.amount -= amount;
+                    _vaultContributors[from] -= amount;
                     amount = 0;
                 }
-
-                _vaultContributors[from] -= offer.amount;
             }
         }
 
