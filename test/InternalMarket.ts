@@ -330,11 +330,13 @@ describe("InternalMarket", async () => {
         });
       });
 
-      describe("unlockedBalanceOf", async () => {
+      describe("withdrawableBalanceOf", async () => {
         it("should be equal to zero when alice just started offering their tokens", async () => {
           await mineEVMBlock();
           expect(
-            await internalMarket.connect(alice).unlockedBalanceOf(alice.address)
+            await internalMarket
+              .connect(alice)
+              .withdrawableBalanceOf(alice.address)
           ).equal(0);
         });
 
@@ -343,12 +345,16 @@ describe("InternalMarket", async () => {
           await setEVMTimestamp(ts + WEEK + DAY * 3);
           await mineEVMBlock();
           expect(
-            await internalMarket.connect(alice).unlockedBalanceOf(alice.address)
+            await internalMarket
+              .connect(alice)
+              .withdrawableBalanceOf(alice.address)
           ).equal(11 + 25);
         });
 
         it("should be equal to balance for bob", async () => {
-          expect(await internalMarket.unlockedBalanceOf(bob.address)).equal(0);
+          expect(await internalMarket.withdrawableBalanceOf(bob.address)).equal(
+            0
+          );
         });
       });
     });

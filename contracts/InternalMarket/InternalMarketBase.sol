@@ -165,7 +165,7 @@ contract InternalMarketBase is Context {
 
     // Tokens that has been offered but not bought by any other contributor
     // within the allowed timeframe.
-    function unlockedBalanceOf(
+    function withdrawableBalanceOf(
         address account
     ) public view virtual returns (uint256) {
         (, uint256 unlocked) = _calculateOffersOf(account);
