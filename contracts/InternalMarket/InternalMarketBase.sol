@@ -3,10 +3,9 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
 import "hardhat/console.sol";
 
-contract InternalMarketBase is Context {
+contract InternalMarketBase {
     struct Offer {
         uint256 expiredAt;
         uint256 amount;
