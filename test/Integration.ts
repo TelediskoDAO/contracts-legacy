@@ -478,6 +478,35 @@ describe("Integration", async () => {
       expect(resolution3Result).equal(true);
     });
 
+    it("internal market + voting power", async () => {
+      await _makeContributor(user1, 49);
+      await _makeContributor(user2, 51);
+
+      const resolutionId1 = await _prepareResolution(6);
+      await _makeVotable(resolutionId1);
+
+      expect(await voting.getVotingPower(user1.address)).equal(49);
+      expect(await voting.getVotingPower(user2.address)).equal(51);
+
+      await market.connect(user2).makeOffer(2);
+      await market.matchOffer(user2.address, user1.address, 1);
+
+      const resolutionId2 = await _prepareResolution(6);
+      await _makeVotable(resolutionId2);
+
+      expect(await voting.getVotingPower(user1.address)).equal(50);
+      expect(await voting.getVotingPower(user2.address)).equal(49);
+
+      await setEVMTimestamp((await getEVMTimestamp()) + DAY * 8);
+      await market.connect(user2).withdraw(user2.address, 1);
+
+      const resolutionId3 = await _prepareResolution(6);
+      await _makeVotable(resolutionId3);
+
+      expect(await voting.getVotingPower(user1.address)).equal(50);
+      expect(await voting.getVotingPower(user2.address)).equal(50);
+    });
+
     // Mint 50 tokens to A
     // Mint 100 tokens to B
     // Mint 1 token to C
