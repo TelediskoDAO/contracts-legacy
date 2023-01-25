@@ -154,6 +154,65 @@ describe("InternalMarket", async () => {
       });
     });
 
+    describe.only("withdraw", async () => {
+      let ts: number;
+
+      beforeEach(async () => {
+        // At the end of this method we have:
+        //
+        // - An offer made on `ts`
+        // - An offer made on `ts + 2 days`
+        // - An offer made on `ts + 4 days`
+        await internalMarket.connect(alice).makeOffer(11);
+        ts = await getEVMTimestamp();
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 2);
+        await internalMarket.connect(alice).makeOffer(25);
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 4);
+        await internalMarket.connect(alice).makeOffer(35);
+      });
+
+      it("should not allow to withdraw if there are no offers", async () => {
+        await expect(
+          internalMarket.connect(bob).withdraw(bob.address, 10)
+        ).revertedWith("InternalMarket: amount exceeds balance");
+      });
+
+      it("should not allow to withdraw if there are no expired offers", async () => {
+        await expect(
+          internalMarket.connect(alice).withdraw(alice.address, 10)
+        ).revertedWith("InternalMarket: amount exceeds balance");
+      });
+
+      it("should not allow to withdraw if the amount is bigger than the amount of the expired offers", async () => {
+        await setEVMTimestamp(ts + WEEK + DAY);
+        await expect(
+          internalMarket.connect(alice).withdraw(alice.address, 20)
+        ).revertedWith("InternalMarket: amount exceeds balance");
+      });
+
+      it("should allow to withdraw if the amount is less than the amount of the expired offers", async () => {
+        await setEVMTimestamp(ts + WEEK + DAY);
+        await internalMarket.connect(alice).withdraw(bob.address, 5);
+        expect(token.transfer).calledWith(bob.address, 5);
+      });
+
+      it("should allow to withdraw if the amount is equal to the the amount of the expired offers", async () => {
+        await setEVMTimestamp(ts + WEEK + DAY);
+        await internalMarket.connect(alice).withdraw(bob.address, 11);
+        expect(token.transfer).calledWith(bob.address, 11);
+      });
+
+      it("should allow to withdraw if the amount is equal to the the amount of all expired offers", async () => {
+        await setEVMTimestamp(ts + WEEK + DAY * 3);
+        await internalMarket.connect(alice).withdraw(bob.address, 11 + 25);
+        expect(token.transfer).calledWith(bob.address, 11 + 25);
+      });
+    });
+
     /*
     describe("balances", async () => {
       let ts: number;

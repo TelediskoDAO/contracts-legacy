@@ -106,7 +106,6 @@ contract InternalMarketBase is Context {
                     // 1. decrease the amount of offered tokens
                     offer.amount -= amount;
                     _vaultContributors[from] -= amount;
-
                     emit OfferMatched(i, from, to, amount);
 
                     // 2. we've exhausted the amount, set it to zero and go back
