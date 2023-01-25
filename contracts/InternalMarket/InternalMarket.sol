@@ -10,8 +10,8 @@ import "./InternalMarketBase.sol";
 import { Roles } from "../extensions/Roles.sol";
 
 contract InternalMarket is InternalMarketBase, AccessControl {
-    constructor(IERC20 erc20) {
-        _erc20 = erc20;
+    constructor(IERC20 erc20_) {
+        erc20 = erc20_;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
@@ -33,5 +33,11 @@ contract InternalMarket is InternalMarketBase, AccessControl {
 
     function setERC20(IERC20 erc20) public onlyRole(Roles.RESOLUTION_ROLE) {
         _setERC20(erc20);
+    }
+
+    function setOfferDuration(
+        uint duration
+    ) public onlyRole(Roles.RESOLUTION_ROLE) {
+        _setOfferDuration(duration);
     }
 }

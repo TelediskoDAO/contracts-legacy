@@ -452,7 +452,7 @@ describe("Integration", async () => {
       expect(resolution2Result).equal(false);
 
       // Let 7 days pass, so to unlock tokens from user2
-      const expirationSeconds = await market.WAITING_TIME_EXTERNAL();
+      const expirationSeconds = await market.offerDuration();
       const offerExpires =
         (await getEVMTimestamp()) + expirationSeconds.toNumber();
       await setEVMTimestamp(offerExpires);

@@ -27,7 +27,7 @@ describe("InternalMarket", async () => {
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
-  let WAITING_TIME_EXTERNAL: number;
+  let offerDuration: number;
 
   beforeEach(async () => {
     [deployer, account, alice, bob, carol] = await ethers.getSigners();
@@ -46,12 +46,44 @@ describe("InternalMarket", async () => {
     ESCROW_ROLE = await roles.ESCROW_ROLE();
     await internalMarket.grantRole(ESCROW_ROLE, deployer.address);
 
-    WAITING_TIME_EXTERNAL = (
-      await internalMarket.WAITING_TIME_EXTERNAL()
-    ).toNumber();
+    offerDuration = (await internalMarket.offerDuration()).toNumber();
 
     // make transferFrom always succeed
     token.transferFrom.returns();
+  });
+
+  describe("setERC20", async () => {
+    it("should allow a resolution to set the token address", async () => {
+      // Alice is not a token, but it's a valid address, so we use it to test this function
+      await internalMarket.setERC20(alice.address);
+      expect(await internalMarket.erc20()).equal(alice.address);
+    });
+
+    it("should revert if anyone else tries to set the token address", async () => {
+      // Alice is not a token, but it's a valid address, so we use it to test this function
+      await expect(
+        internalMarket.connect(alice).setERC20(alice.address)
+      ).revertedWith(
+        `AccessControl: account ${alice.address.toLowerCase()} is missing role ${RESOLUTION_ROLE}`
+      );
+    });
+  });
+
+  describe("setOfferDuration", async () => {
+    it("should allow a resolution to set duration of an offer", async () => {
+      // Alice is not a token, but it's a valid address, so we use it to test this function
+      await internalMarket.setOfferDuration(DAY);
+      expect(await internalMarket.offerDuration()).equal(DAY);
+    });
+
+    it("should revert if anyone else tries to set the duration of an offer", async () => {
+      // Alice is not a token, but it's a valid address, so we use it to test this function
+      await expect(
+        internalMarket.connect(alice).setOfferDuration(DAY)
+      ).revertedWith(
+        `AccessControl: account ${alice.address.toLowerCase()} is missing role ${RESOLUTION_ROLE}`
+      );
+    });
   });
 
   describe("makeOffer", async () => {
@@ -62,7 +94,7 @@ describe("InternalMarket", async () => {
           0,
           deployer.address,
           1000,
-          (await getEVMTimestamp()) + WAITING_TIME_EXTERNAL
+          (await getEVMTimestamp()) + offerDuration
         );
     });
 

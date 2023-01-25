@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "hardhat/console.sol";
 
 contract InternalMarketBase is Context {
-    IERC20 internal _erc20;
-
     struct Offer {
         uint256 expiredAt;
         uint256 amount;
@@ -27,11 +25,10 @@ contract InternalMarketBase is Context {
         uint256 createdAt
     );
 
-    event OfferExpired(uint128 id, address from, uint256 amount);
-
     event OfferMatched(uint128 id, address from, address to, uint256 amount);
 
-    uint256 public constant WAITING_TIME_EXTERNAL = 7 days;
+    IERC20 public erc20;
+    uint256 public offerDuration = 7 days;
 
     mapping(address => Offers) internal _offers;
 
@@ -45,14 +42,18 @@ contract InternalMarketBase is Context {
         return offers.end++;
     }
 
-    function _setERC20(IERC20 erc20) internal virtual {
-        _erc20 = erc20;
+    function _setERC20(IERC20 erc20_) internal virtual {
+        erc20 = erc20_;
+    }
+
+    function _setOfferDuration(uint duration) internal virtual {
+        offerDuration = duration;
     }
 
     function _makeOffer(address from, uint256 amount) internal virtual {
-        _erc20.transferFrom(from, address(this), amount);
+        erc20.transferFrom(from, address(this), amount);
 
-        uint256 expiredAt = block.timestamp + WAITING_TIME_EXTERNAL;
+        uint256 expiredAt = block.timestamp + offerDuration;
         uint128 id = _enqueue(_offers[from], Offer(expiredAt, amount));
 
         _vaultContributors[from] += amount;
@@ -124,7 +125,7 @@ contract InternalMarketBase is Context {
         uint256 amount
     ) internal virtual {
         _beforeWithdraw(from, amount);
-        _erc20.transfer(to, amount);
+        erc20.transfer(to, amount);
     }
 
     function _matchOffer(
@@ -133,7 +134,7 @@ contract InternalMarketBase is Context {
         uint256 amount
     ) internal virtual {
         _beforeMatchOffer(from, to, amount);
-        _erc20.transfer(to, amount);
+        erc20.transfer(to, amount);
     }
 
     function _calculateOffersOf(
