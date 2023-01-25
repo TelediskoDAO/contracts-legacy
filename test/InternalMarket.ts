@@ -13,8 +13,6 @@ chai.use(solidity);
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
-const AddressZero = ethers.constants.AddressZero;
-
 const DAY = 60 * 60 * 24;
 const WEEK = DAY * 7;
 
