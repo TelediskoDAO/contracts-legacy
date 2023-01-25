@@ -26,10 +26,11 @@ describe("InternalMarket", async () => {
   let account: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
+  let carol: SignerWithAddress;
   let WAITING_TIME_EXTERNAL: number;
 
   beforeEach(async () => {
-    [deployer, account, alice, bob] = await ethers.getSigners();
+    [deployer, account, alice, bob, carol] = await ethers.getSigners();
 
     token = await smock.fake("IERC20");
 
@@ -154,7 +155,7 @@ describe("InternalMarket", async () => {
       });
     });
 
-    describe.only("withdraw", async () => {
+    describe("withdraw", async () => {
       let ts: number;
 
       beforeEach(async () => {
@@ -210,6 +211,57 @@ describe("InternalMarket", async () => {
         await setEVMTimestamp(ts + WEEK + DAY * 3);
         await internalMarket.connect(alice).withdraw(bob.address, 11 + 25);
         expect(token.transfer).calledWith(bob.address, 11 + 25);
+      });
+    });
+
+    describe("match+withdraw", async () => {
+      let ts: number;
+
+      beforeEach(async () => {
+        // At the end of this method we have:
+        //
+        // - An offer made on `ts`
+        // - An offer made on `ts + 2 days`
+        // - An offer made on `ts + 4 days`
+        await internalMarket.connect(alice).makeOffer(11);
+        ts = await getEVMTimestamp();
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 2);
+        await internalMarket.connect(alice).makeOffer(25);
+
+        // Move to the next day and make another offer
+        await setEVMTimestamp(ts + DAY * 4);
+        await internalMarket.connect(alice).makeOffer(35);
+      });
+
+      it("should not allow to withdraw if an offer has been matched", async () => {
+        // Bob matches Alice's offer
+        await internalMarket.matchOffer(alice.address, bob.address, 11);
+        // Alice's offer expires
+        await setEVMTimestamp(ts + WEEK + DAY);
+        await expect(
+          internalMarket.connect(alice).withdraw(bob.address, 11)
+        ).revertedWith("InternalMarket: amount exceeds balance");
+      });
+
+      it("should allow to withdraw a portion of the offered tokens including an expired offer", async () => {
+        // Bob matches Alice's offer
+        await internalMarket.matchOffer(alice.address, bob.address, 5);
+        // Alice's offer expires
+        await setEVMTimestamp(ts + WEEK + DAY);
+        await internalMarket.connect(alice).withdraw(carol.address, 6);
+        expect(token.transfer.atCall(1)).calledWith(carol.address, 6);
+      });
+
+      it("should allow to withdraw a portion of the offered tokens including expired offers", async () => {
+        // Bob matches Alice's offer
+        await internalMarket.matchOffer(alice.address, bob.address, 5);
+        // Alice's first two offers expire
+        await setEVMTimestamp(ts + WEEK + DAY * 3);
+        // Alice can withdraw 6 + 25 tokens
+        await internalMarket.connect(alice).withdraw(carol.address, 6 + 25);
+        expect(token.transfer.atCall(1)).calledWith(carol.address, 6 + 25);
       });
     });
 
