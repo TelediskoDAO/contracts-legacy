@@ -126,6 +126,16 @@ describe("InternalMarket", async () => {
         await internalMarket.connect(alice).makeOffer(35);
       });
 
+      it("should revert when called by a non ESCROW_ROLE", async () => {
+        await expect(
+          internalMarket
+            .connect(alice)
+            .matchOffer(alice.address, bob.address, 11)
+        ).revertedWith(
+          `AccessControl: account ${alice.address.toLowerCase()} is missing role ${ESCROW_ROLE}`
+        );
+      });
+
       it("should match the oldest active offer", async () => {
         await expect(internalMarket.matchOffer(alice.address, bob.address, 11))
           .emit(internalMarket, "OfferMatched")
