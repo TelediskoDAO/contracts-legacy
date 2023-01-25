@@ -142,7 +142,7 @@ contract InternalMarketBase is Context {
     ) internal view virtual returns (uint256, uint256) {
         Offers storage offers = _offers[account];
 
-        uint256 offered = _vaultContributors[account];
+        uint256 vault = _vaultContributors[account];
         uint256 unlocked;
 
         for (uint128 i = offers.start; i < offers.end; i++) {
@@ -152,7 +152,7 @@ contract InternalMarketBase is Context {
                 unlocked += offer.amount;
             }
         }
-        return (offered, unlocked);
+        return (vault - unlocked, unlocked);
     }
 
     // Tokens owned by a contributor that are offered to other contributors
