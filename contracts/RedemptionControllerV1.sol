@@ -38,6 +38,7 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
 
     struct Redeemable {
         uint256 amount;
+        uint256 mintTimestamp;
         uint256 start;
         uint256 end;
     }
@@ -46,6 +47,7 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
     struct Mint {
         uint256 timestamp;
         uint256 amount;
+        //uint256 offered;
     }
 
     mapping(address => Redeemable[]) internal _redeemables;
@@ -56,6 +58,21 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
         uint256 amount
     ) external onlyRole(TOKEN_MANAGER_ROLE) {
         _mints[account].push(Mint(block.timestamp, amount));
+    }
+
+    function _addRedeemable(
+        address account,
+        uint256 amount,
+        uint256 mintTimestamp,
+        uint256 redemptionStarts
+    ) internal {
+        Redeemable memory offerRedeemable = Redeemable(
+            amount,
+            mintTimestamp,
+            redemptionStarts,
+            redemptionStarts + redemptionPeriod
+        );
+        _redeemables[account].push(offerRedeemable);
     }
 
     function afterOffer(
@@ -76,18 +93,31 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
                 threshold = earliestTimestamp;
             }
 
-            uint256 maxRedeemable;
+            uint256 redemptionStarts = block.timestamp + TIME_TO_REDEMPTION;
+
             Mint[] storage accountMints = _mints[account];
             for (uint256 i = accountMints.length; i > 0; i--) {
                 Mint storage accountMint = accountMints[i - 1];
                 if (accountMint.timestamp >= threshold) {
                     if (amount >= accountMint.amount) {
                         amount -= accountMint.amount;
-                        maxRedeemable += accountMint.amount;
+
+                        _addRedeemable(
+                            account,
+                            accountMint.amount,
+                            accountMint.timestamp,
+                            redemptionStarts
+                        );
                         accountMint.amount = 0;
                     } else {
-                        maxRedeemable += amount;
                         accountMint.amount -= amount;
+
+                        _addRedeemable(
+                            account,
+                            amount,
+                            accountMint.timestamp,
+                            redemptionStarts
+                        );
                         amount = 0;
                     }
                 } else {
@@ -95,13 +125,44 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
                 }
             }
 
-            uint256 redemptionStarts = block.timestamp + TIME_TO_REDEMPTION;
-            Redeemable memory offerRedeemable = Redeemable(
-                maxRedeemable,
-                redemptionStarts,
-                redemptionStarts + redemptionPeriod
-            );
-            _redeemables[account].push(offerRedeemable);
+            // +plust expired redeemable within range
+            Redeemable[] storage accountRedeemables = _redeemables[account];
+
+            for (uint256 i = accountRedeemables.length; i > 0; i--) {
+                Redeemable storage accountRedeemable = accountRedeemables[
+                    i - 1
+                ];
+                if (accountRedeemable.mintTimestamp >= threshold) {
+                    if (
+                        block.timestamp >= accountRedeemable.end &&
+                        accountRedeemable.amount > 0
+                    ) {
+                        if (amount >= accountRedeemable.amount) {
+                            amount -= accountRedeemable.amount;
+                            _addRedeemable(
+                                account,
+                                accountRedeemable.amount,
+                                accountRedeemable.mintTimestamp,
+                                redemptionStarts
+                            );
+
+                            accountRedeemable.amount = 0;
+                        } else {
+                            accountRedeemable.amount -= amount;
+                            _addRedeemable(
+                                account,
+                                amount,
+                                accountRedeemable.mintTimestamp,
+                                redemptionStarts
+                            );
+
+                            amount = 0;
+                        }
+                    }
+                } else {
+                    break;
+                }
+            }
         }
     }
 
@@ -152,7 +213,7 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
         }
     }*/
 
-    function redeemableBalanceOf(
+    function redeemableBalance(
         address account
     ) external view returns (uint256 redeemableAmount) {
         Redeemable[] storage accountRedeemables = _redeemables[account];

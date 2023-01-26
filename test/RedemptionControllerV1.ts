@@ -3,8 +3,8 @@ import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { solidity } from "ethereum-waffle";
 import {
-  RedemptionController,
-  RedemptionController__factory,
+  RedemptionControllerV1,
+  RedemptionControllerV1__factory,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { mineEVMBlock, timeTravel } from "./utils/evm";
@@ -16,20 +16,20 @@ const { expect } = chai;
 const REDEMPTION_PERIOD_DAYS = 10;
 
 describe("RedemptionController", () => {
-  let redemptionController: RedemptionController;
+  let redemptionController: RedemptionControllerV1;
   let deployer: SignerWithAddress, account: SignerWithAddress;
 
   beforeEach(async () => {
     [deployer, account] = await ethers.getSigners();
 
     const RedemptionControllerFactory = (await ethers.getContractFactory(
-      "RedemptionController",
+      "RedemptionControllerV1",
       deployer
-    )) as RedemptionController__factory;
+    )) as RedemptionControllerV1__factory;
 
     redemptionController = (await upgrades.deployProxy(
       RedemptionControllerFactory
-    )) as RedemptionController;
+    )) as RedemptionControllerV1;
     await redemptionController.deployed();
     await redemptionController.grantRole(
       await redemptionController.TOKEN_MANAGER_ROLE(),
@@ -369,10 +369,26 @@ describe("RedemptionController", () => {
       await mineEVMBlock();
 
       // Redeemable 300
-      // await expectBalance(300);
+      await expectBalance(300);
+
+      // 60 days pass
+      await timeTravel(60);
+      await mineEVMBlock();
+
+      // Mint 500
+      await redemptionController.afterMint(account.address, 500);
+
+      // Offer 800
+      await redemptionController.afterOffer(account.address, 800);
+
+      // 60 days pass
+      await timeTravel(60);
+      await mineEVMBlock();
+
+      await expectBalance(500);
 
       // Redeemable 0: the chance to redeem that mint is gone
-      await expectBalance(0);
+      //await expectBalance(0);
     });
   });
 });
