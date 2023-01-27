@@ -386,9 +386,60 @@ describe("RedemptionController", () => {
       await mineEVMBlock();
 
       await expectBalance(500);
+    });
 
-      // Redeemable 0: the chance to redeem that mint is gone
-      //await expectBalance(0);
+    it("complex token movement #3", async () => {
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 300
+      await redemptionController.afterOffer(account.address, 300);
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 100
+      await redemptionController.afterOffer(account.address, 100);
+
+      // 1 month
+      await timeTravel(30);
+      await mineEVMBlock();
+
+      // Redeemable 300
+      await expectBalance(300);
+
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 300
+      await redemptionController.afterOffer(account.address, 300);
+
+      // Redeemable 100
+      await expectBalance(100);
+
+      // Redeem 100
+      await redemptionController.afterRedeem(account.address, 100);
+
+      // 60 days pass
+      await timeTravel(60);
+      await mineEVMBlock();
+
+      // Redeemable 200
+      await expectBalance(200);
     });
   });
 });

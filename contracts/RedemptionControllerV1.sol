@@ -96,8 +96,8 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
             uint256 redemptionStarts = block.timestamp + TIME_TO_REDEMPTION;
 
             Mint[] storage accountMints = _mints[account];
-            for (uint256 i = accountMints.length; i > 0; i--) {
-                Mint storage accountMint = accountMints[i - 1];
+            for (uint256 i = 0; i < accountMints.length && amount > 0; i++) {
+                Mint storage accountMint = accountMints[i];
                 if (accountMint.timestamp >= threshold) {
                     if (amount >= accountMint.amount) {
                         amount -= accountMint.amount;
@@ -120,18 +120,14 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
                         );
                         amount = 0;
                     }
-                } else {
-                    break;
                 }
             }
 
-            // +plust expired redeemable within range
+            // +plus expired redeemable within range
             Redeemable[] storage accountRedeemables = _redeemables[account];
 
-            for (uint256 i = accountRedeemables.length; i > 0; i--) {
-                Redeemable storage accountRedeemable = accountRedeemables[
-                    i - 1
-                ];
+            for (uint256 i = 0; i < accountRedeemables.length; i++) {
+                Redeemable storage accountRedeemable = accountRedeemables[i];
                 if (accountRedeemable.mintTimestamp >= threshold) {
                     if (
                         block.timestamp >= accountRedeemable.end &&
@@ -159,8 +155,6 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
                             amount = 0;
                         }
                     }
-                } else {
-                    break;
                 }
             }
         }
@@ -172,8 +166,8 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
     ) external onlyRole(TOKEN_MANAGER_ROLE) {
         Redeemable[] storage accountRedeemables = _redeemables[account];
 
-        for (uint256 i = accountRedeemables.length; i > 0 && amount > 0; i--) {
-            Redeemable storage accountRedeemable = accountRedeemables[i - 1];
+        for (uint256 i = 0; i < accountRedeemables.length && amount > 0; i++) {
+            Redeemable storage accountRedeemable = accountRedeemables[i];
             if (
                 block.timestamp >= accountRedeemable.start &&
                 block.timestamp < accountRedeemable.end
@@ -185,8 +179,6 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
                     amount -= accountRedeemable.amount;
                     accountRedeemable.amount = 0;
                 }
-            } else if (block.timestamp < accountRedeemable.start) {
-                break;
             }
         }
 
@@ -196,30 +188,13 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
         );
     }
 
-    /*
-    function afterTransfer(
-        address account,
-        uint256 amount
-    ) external onlyRole(TOKEN_MANAGER_ROLE) {
-        Redeemable[] storage accountRedeemables = _redeemables[account];
-
-        for (uint256 i = accountRedeemables.length; i > 0; i--) {
-            Redeemable storage accountRedeemable = accountRedeemables[i - 1];
-            if (block.timestamp >= accountRedeemable.end) {
-                // there is some redeemable amount that went past the grace period
-                accountRedeemable
-                // take it off the redeemables and add it to the minted
-            }
-        }
-    }*/
-
     function redeemableBalance(
         address account
     ) external view returns (uint256 redeemableAmount) {
         Redeemable[] storage accountRedeemables = _redeemables[account];
 
-        for (uint256 i = accountRedeemables.length; i > 0; i--) {
-            Redeemable storage accountRedeemable = accountRedeemables[i - 1];
+        for (uint256 i = 0; i < accountRedeemables.length; i++) {
+            Redeemable storage accountRedeemable = accountRedeemables[i];
             if (
                 block.timestamp >= accountRedeemable.start &&
                 block.timestamp < accountRedeemable.end
