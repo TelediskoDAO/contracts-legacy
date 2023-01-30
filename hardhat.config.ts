@@ -65,12 +65,20 @@ const config: HardhatUserConfig = {
             enabled: true,
             runs: 200,
           },
+          outputSelection: {
+            "*": {
+              "*": ["storageLayout"],
+            },
+          },
         },
       },
     ],
   },
   networks: {
     hardhat: {},
+    localhost: {
+      url: "http://127.0.0.1:8545",
+    },
     localhost: {
       url: "http://127.0.0.1:8545",
     },
@@ -95,7 +103,7 @@ const config: HardhatUserConfig = {
       accounts: [TEVMOS_PRIVATE_KEY],
     },
     evmos: {
-      url: "https://evmos-evm.publicnode.com",
+      url: "https://eth.bd.evmos.org:8545",
       accounts: [EVMOS_PRIVATE_KEY],
     },
     "cronostestnet_338-3": {

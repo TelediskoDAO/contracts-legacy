@@ -1,10 +1,13 @@
 import { deploy } from "@openzeppelin/hardhat-upgrades/dist/utils";
+import { deploy } from "@openzeppelin/hardhat-upgrades/dist/utils";
 import { task } from "hardhat/config";
 import {
   Voting,
   ResolutionManager,
   ShareholderRegistry,
   TelediskoToken,
+  PriceOracle,
+  PriceOracle__factory,
   PriceOracle,
   PriceOracle__factory,
 } from "../typechain";
@@ -89,10 +92,3 @@ task("deploy-oracle", "Deploy Oracle")
 
     console.log(`\n\nOracle deployed 🔮 You can operate it with ${relayer}`);
   });
-
-task("oracle-price", "Deploy Oracle").setAction(async (_, hre) => {
-  const contract = await loadContract(hre, PriceOracle__factory, "PriceOracle");
-  const result = await contract.getReferenceData("EEUR", "EUR");
-
-  console.log(`Data ${result}`);
-});
