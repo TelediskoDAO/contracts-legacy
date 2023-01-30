@@ -16,9 +16,10 @@ const { expect } = chai;
 const REDEMPTION_PERIOD_DAYS = 10;
 
 describe("RedemptionController", () => {
+  let snapshotId: string;
+
   let redemptionController: RedemptionController;
   let deployer: SignerWithAddress, account: SignerWithAddress;
-  let snapshotId: string;
 
   before(async () => {
     [deployer, account] = await ethers.getSigners();
