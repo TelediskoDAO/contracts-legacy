@@ -47,11 +47,13 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
     struct Mint {
         uint256 timestamp;
         uint256 amount;
-        //uint256 offered;
     }
 
     mapping(address => Redeemable[]) internal _redeemables;
+    mapping(address => uint256) internal _redeemablesFirst;
+
     mapping(address => Mint[]) internal _mints;
+    mapping(address => uint256) internal _mintsFirst;
 
     function afterMint(
         address account,
@@ -96,7 +98,12 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
             uint256 redemptionStarts = block.timestamp + TIME_TO_REDEMPTION;
 
             Mint[] storage accountMints = _mints[account];
-            for (uint256 i = 0; i < accountMints.length && amount > 0; i++) {
+            uint256 i;
+            for (
+                i = _mintsFirst[account];
+                i < accountMints.length && amount > 0;
+                i++
+            ) {
                 Mint storage accountMint = accountMints[i];
                 if (accountMint.timestamp >= threshold) {
                     if (amount >= accountMint.amount) {
@@ -122,38 +129,38 @@ contract RedemptionControllerV1 is Initializable, AccessControlUpgradeable {
                     }
                 }
             }
+            _mintsFirst[account] = --i;
 
-            // +plus expired redeemable within range
+            // + expired redeemables within range
             Redeemable[] storage accountRedeemables = _redeemables[account];
 
-            for (uint256 i = 0; i < accountRedeemables.length; i++) {
+            for (i = 0; i < accountRedeemables.length; i++) {
                 Redeemable storage accountRedeemable = accountRedeemables[i];
-                if (accountRedeemable.mintTimestamp >= threshold) {
-                    if (
-                        block.timestamp >= accountRedeemable.end &&
-                        accountRedeemable.amount > 0
-                    ) {
-                        if (amount >= accountRedeemable.amount) {
-                            amount -= accountRedeemable.amount;
-                            _addRedeemable(
-                                account,
-                                accountRedeemable.amount,
-                                accountRedeemable.mintTimestamp,
-                                redemptionStarts
-                            );
+                if (
+                    accountRedeemable.mintTimestamp >= threshold &&
+                    block.timestamp >= accountRedeemable.end &&
+                    accountRedeemable.amount > 0
+                ) {
+                    if (amount >= accountRedeemable.amount) {
+                        amount -= accountRedeemable.amount;
+                        _addRedeemable(
+                            account,
+                            accountRedeemable.amount,
+                            accountRedeemable.mintTimestamp,
+                            redemptionStarts
+                        );
 
-                            accountRedeemable.amount = 0;
-                        } else {
-                            accountRedeemable.amount -= amount;
-                            _addRedeemable(
-                                account,
-                                amount,
-                                accountRedeemable.mintTimestamp,
-                                redemptionStarts
-                            );
+                        accountRedeemable.amount = 0;
+                    } else {
+                        accountRedeemable.amount -= amount;
+                        _addRedeemable(
+                            account,
+                            amount,
+                            accountRedeemable.mintTimestamp,
+                            redemptionStarts
+                        );
 
-                            amount = 0;
-                        }
+                        amount = 0;
                     }
                 }
             }

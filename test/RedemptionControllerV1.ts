@@ -441,5 +441,61 @@ describe("RedemptionController", () => {
       // Redeemable 200
       await expectBalance(200);
     });
+
+    it("complex token movement #4", async () => {
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 300
+      await redemptionController.afterOffer(account.address, 300);
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 100
+      await redemptionController.afterOffer(account.address, 100);
+
+      // 1 month
+      await timeTravel(30);
+      await mineEVMBlock();
+
+      // Redeemable 300
+      await expectBalance(300);
+
+      // 1 month
+      await timeTravel(30);
+      await mineEVMBlock();
+
+      // Redeemable 100
+      await expectBalance(100);
+
+      // 60 days pass
+      await timeTravel(REDEMPTION_PERIOD_DAYS);
+      await mineEVMBlock();
+
+      // Offer 300
+      await redemptionController.afterOffer(account.address, 300);
+
+      // 60 days pass
+      await timeTravel(60);
+      await mineEVMBlock();
+
+      // Redeemable 200
+      await expectBalance(300);
+    });
   });
 });
