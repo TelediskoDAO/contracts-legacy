@@ -36,130 +36,178 @@ contract RedemptionController is Initializable, AccessControlUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() initializer {}
 
-    struct Redeem {
-        uint256 timestamp;
+    struct Redeemable {
         uint256 amount;
+        uint256 mintTimestamp;
+        uint256 start;
+        uint256 end;
     }
 
-    struct Offer {
-        uint256 timestamp;
-        uint256 amount;
-    }
     // TODO: improve naming to indicate that this is more than just MINT
     struct Mint {
         uint256 timestamp;
         uint256 amount;
     }
 
-    mapping(address => Redeem[]) internal _redeems;
+    mapping(address => Redeemable[]) internal _redeemables;
+    mapping(address => uint256) internal _redeemablesFirst;
+
     mapping(address => Mint[]) internal _mints;
-    mapping(address => Offer[]) internal _offers;
-
-    function redeemableBalance(address account) public view returns (uint256) {
-        //console.log("Balance ", block.timestamp);
-        if (_mints[account].length == 0 || _offers[account].length == 0) {
-            return 0;
-        }
-
-        uint256 lastActivity = _mints[account][_mints[account].length - 1]
-            .timestamp;
-
-        // User can redeem tokens minted within 3 months since last activity
-        uint256 threshold = lastActivity - 30 days * 3;
-
-        // User cannot redeem tokens that were minted earlier than 15 months ago
-        uint256 cutoff = block.timestamp - 30 days * 15;
-
-        if (threshold < cutoff) {
-            threshold = cutoff;
-        }
-
-        uint256 totalMinted;
-        Mint[] storage accountMints = _mints[account];
-        for (uint256 i = accountMints.length; i > 0; i--) {
-            Mint storage accountMint = accountMints[i - 1];
-            if (accountMint.timestamp >= threshold) {
-                totalMinted += accountMint.amount;
-            }
-        }
-
-        uint256 redeemableOffers;
-        Offer[] storage accountOffers = _offers[account];
-        for (uint256 i = accountOffers.length; i > 0; i--) {
-            Offer storage accountOffer = accountOffers[i - 1];
-            // Offer timestamp = 1st August
-            // Today = 1st September, 1st October, 1st November
-            // 1st September - 60 days = 1st July -> 1st August <= 1st July ? NO
-
-            // 1st October - 60 days = 1st August -> 1st August <= 1st August ? YES
-            //      -> 1st October - 60 days - 30 days = 1st July -> 1st August > 1st July? YES
-
-            // 1st November - 60 days = 1st September -> 1st August <= 1st September ? YES
-            //      -> 1st November - 60 days - 30 days = 1st August -> 1st August > 1st August? NO
-            if (
-                block.timestamp >=
-                accountOffer.timestamp + TIME_TO_REDEMPTION &&
-                block.timestamp <
-                accountOffer.timestamp + TIME_TO_REDEMPTION + redemptionPeriod
-            ) {
-                redeemableOffers += accountOffer.amount;
-            }
-        }
-
-        if (redeemableOffers > totalMinted) {
-            redeemableOffers = totalMinted;
-        }
-
-        // Offers: 1st January 100, 15th January 200
-        // Redeem: 2nd March 50,  10th March 20,            20th March 210,                     29th March 20, 3rd April
-        // Max:    2nd March 100, 10th March 100 - 50 - 20, 20th March 200 + 100 - 50 - 20 - 210
-
-        uint256 totalRedeemed;
-        Redeem[] storage accountRedeems = _redeems[account];
-        for (uint256 i = accountRedeems.length; i > 0; i--) {
-            Redeem storage accountRedeem = accountRedeems[i - 1];
-            if (
-                accountRedeem.timestamp >=
-                accountMints[accountMints.length - 1].timestamp +
-                    TIME_TO_REDEMPTION
-            ) {
-                totalRedeemed += accountRedeem.amount;
-            }
-        }
-
-        if (totalRedeemed <= redeemableOffers) {
-            redeemableOffers -= totalRedeemed;
-        }
-
-        return redeemableOffers;
-    }
+    mapping(address => uint256) internal _mintsFirst;
 
     function afterMint(
         address account,
         uint256 amount
     ) external onlyRole(TOKEN_MANAGER_ROLE) {
-        //console.log("Mint ", block.timestamp);
         _mints[account].push(Mint(block.timestamp, amount));
+    }
+
+    function _addRedeemable(
+        address account,
+        uint256 amount,
+        uint256 mintTimestamp,
+        uint256 redemptionStarts
+    ) internal {
+        Redeemable memory offerRedeemable = Redeemable(
+            amount,
+            mintTimestamp,
+            redemptionStarts,
+            redemptionStarts + redemptionPeriod
+        );
+        _redeemables[account].push(offerRedeemable);
     }
 
     function afterOffer(
         address account,
         uint256 amount
     ) external onlyRole(TOKEN_MANAGER_ROLE) {
-        //console.log("Offer ", block.timestamp);
-        _offers[account].push(Offer(block.timestamp, amount));
+        // Find tokens minted ofer the last 3 months of activity, no earlier than 15 months
+        if (_mints[account].length > 0) {
+            uint256 lastActivity = _mints[account][_mints[account].length - 1]
+                .timestamp;
+
+            // User can redeem tokens minted within 3 months since last activity
+            uint256 threshold = lastActivity - 30 days * 3;
+            // User cannot redeem tokens that were minted earlier than 15 months ago
+            uint256 earliestTimestamp = block.timestamp - 30 days * 15;
+
+            if (threshold < earliestTimestamp) {
+                threshold = earliestTimestamp;
+            }
+
+            uint256 redemptionStarts = block.timestamp + TIME_TO_REDEMPTION;
+
+            Mint[] storage accountMints = _mints[account];
+            uint256 i;
+            for (
+                i = _mintsFirst[account];
+                i < accountMints.length && amount > 0;
+                i++
+            ) {
+                Mint storage accountMint = accountMints[i];
+                if (accountMint.timestamp >= threshold) {
+                    if (amount >= accountMint.amount) {
+                        amount -= accountMint.amount;
+
+                        _addRedeemable(
+                            account,
+                            accountMint.amount,
+                            accountMint.timestamp,
+                            redemptionStarts
+                        );
+                        accountMint.amount = 0;
+                    } else {
+                        accountMint.amount -= amount;
+
+                        _addRedeemable(
+                            account,
+                            amount,
+                            accountMint.timestamp,
+                            redemptionStarts
+                        );
+                        amount = 0;
+                    }
+                }
+            }
+            _mintsFirst[account] = --i;
+
+            // + expired redeemables within range
+            Redeemable[] storage accountRedeemables = _redeemables[account];
+
+            for (i = 0; i < accountRedeemables.length; i++) {
+                Redeemable storage accountRedeemable = accountRedeemables[i];
+                if (
+                    accountRedeemable.mintTimestamp >= threshold &&
+                    block.timestamp >= accountRedeemable.end &&
+                    accountRedeemable.amount > 0
+                ) {
+                    if (amount >= accountRedeemable.amount) {
+                        amount -= accountRedeemable.amount;
+                        _addRedeemable(
+                            account,
+                            accountRedeemable.amount,
+                            accountRedeemable.mintTimestamp,
+                            redemptionStarts
+                        );
+
+                        accountRedeemable.amount = 0;
+                    } else {
+                        accountRedeemable.amount -= amount;
+                        _addRedeemable(
+                            account,
+                            amount,
+                            accountRedeemable.mintTimestamp,
+                            redemptionStarts
+                        );
+
+                        amount = 0;
+                    }
+                }
+            }
+        }
     }
 
     function afterRedeem(
         address account,
         uint256 amount
     ) external onlyRole(TOKEN_MANAGER_ROLE) {
-        //console.log("Redeem ", block.timestamp);
+        Redeemable[] storage accountRedeemables = _redeemables[account];
+
+        for (uint256 i = 0; i < accountRedeemables.length && amount > 0; i++) {
+            Redeemable storage accountRedeemable = accountRedeemables[i];
+            if (
+                block.timestamp >= accountRedeemable.start &&
+                block.timestamp < accountRedeemable.end
+            ) {
+                if (amount < accountRedeemable.amount) {
+                    accountRedeemable.amount -= amount;
+                    amount = 0;
+                } else {
+                    amount -= accountRedeemable.amount;
+                    accountRedeemable.amount = 0;
+                }
+            }
+        }
+
         require(
-            redeemableBalance(account) >= amount,
+            amount == 0,
             "Redemption controller: amount exceeds redeemable balance"
         );
+    }
 
-        _redeems[account].push(Redeem(block.timestamp, amount));
+    function redeemableBalance(
+        address account
+    ) external view returns (uint256 redeemableAmount) {
+        Redeemable[] storage accountRedeemables = _redeemables[account];
+
+        for (uint256 i = 0; i < accountRedeemables.length; i++) {
+            Redeemable storage accountRedeemable = accountRedeemables[i];
+            if (
+                block.timestamp >= accountRedeemable.start &&
+                block.timestamp < accountRedeemable.end
+            ) {
+                redeemableAmount += accountRedeemable.amount;
+            }
+        }
     }
 }

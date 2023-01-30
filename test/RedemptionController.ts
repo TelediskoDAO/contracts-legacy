@@ -1,4 +1,4 @@
-import { ethers, upgrades } from "hardhat";
+import { ethers, upgrades, network } from "hardhat";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { solidity } from "ethereum-waffle";
@@ -18,8 +18,9 @@ const REDEMPTION_PERIOD_DAYS = 10;
 describe("RedemptionController", () => {
   let redemptionController: RedemptionController;
   let deployer: SignerWithAddress, account: SignerWithAddress;
+  let snapshotId: string;
 
-  beforeEach(async () => {
+  before(async () => {
     [deployer, account] = await ethers.getSigners();
 
     const RedemptionControllerFactory = (await ethers.getContractFactory(
@@ -35,6 +36,14 @@ describe("RedemptionController", () => {
       await redemptionController.TOKEN_MANAGER_ROLE(),
       deployer.address
     );
+  });
+
+  beforeEach(async () => {
+    snapshotId = await network.provider.send("evm_snapshot");
+  });
+
+  afterEach(async () => {
+    await network.provider.send("evm_revert", [snapshotId]);
   });
 
   async function expectBalance(amount: number) {
@@ -311,7 +320,7 @@ describe("RedemptionController", () => {
     it("complex token movement #1", async () => {
       // Mint 500
       await redemptionController.afterMint(account.address, 500);
-      // Offer 400
+      // Offer 500
       await redemptionController.afterOffer(account.address, 400);
       // After 60 days, redeems 300
       await timeTravel(60);
@@ -334,10 +343,10 @@ describe("RedemptionController", () => {
       await mineEVMBlock();
       await expectBalance(0);
 
-      // After 50 days, redeemable 200
+      // After 50 days, redeem 200
       await timeTravel(50);
       await mineEVMBlock();
-      await expectBalance(200);
+      await expectBalance(100);
     });
 
     it("complex token movement #2", async () => {
@@ -354,10 +363,8 @@ describe("RedemptionController", () => {
       // Redeem 200
       await redemptionController.afterRedeem(account.address, 200);
 
-      await expectBalance(300);
-
-      // 10 days pass (redemption period)
-      await timeTravel(REDEMPTION_PERIOD_DAYS);
+      // 10 days pass
+      await timeTravel(10);
       await mineEVMBlock();
 
       // Redeemable 0
@@ -373,8 +380,131 @@ describe("RedemptionController", () => {
       // Redeemable 300
       await expectBalance(300);
 
-      // Redeemable 0: the chance to redeem that mint is gone
-      //await expectBalance(0);
+      // 60 days pass
+      await timeTravel(60);
+      await mineEVMBlock();
+
+      // Mint 500
+      await redemptionController.afterMint(account.address, 500);
+
+      // Offer 800
+      await redemptionController.afterOffer(account.address, 800);
+
+      // 60 days pass
+      await timeTravel(60);
+      await mineEVMBlock();
+
+      await expectBalance(500);
+    });
+
+    it("complex token movement #3", async () => {
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 300
+      await redemptionController.afterOffer(account.address, 300);
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 100
+      await redemptionController.afterOffer(account.address, 100);
+
+      // 1 month
+      await timeTravel(30);
+      await mineEVMBlock();
+
+      // Redeemable 300
+      await expectBalance(300);
+
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 300
+      await redemptionController.afterOffer(account.address, 300);
+
+      // Redeemable 100
+      await expectBalance(100);
+
+      // Redeem 100
+      await redemptionController.afterRedeem(account.address, 100);
+
+      // 60 days pass
+      await timeTravel(60);
+      await mineEVMBlock();
+
+      // Redeemable 200
+      await expectBalance(200);
+    });
+
+    it("complex token movement #4", async () => {
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 300
+      await redemptionController.afterOffer(account.address, 300);
+      // Mint 100
+      await redemptionController.afterMint(account.address, 100);
+
+      // 1 month
+      await timeTravel(30);
+
+      // Offer 100
+      await redemptionController.afterOffer(account.address, 100);
+
+      // 1 month
+      await timeTravel(30);
+      await mineEVMBlock();
+
+      // Redeemable 300
+      await expectBalance(300);
+
+      // 1 month
+      await timeTravel(30);
+      await mineEVMBlock();
+
+      // Redeemable 100
+      await expectBalance(100);
+
+      // 60 days pass
+      await timeTravel(REDEMPTION_PERIOD_DAYS);
+      await mineEVMBlock();
+
+      // Offer 300
+      await redemptionController.afterOffer(account.address, 300);
+
+      // 60 days pass
+      await timeTravel(60);
+      await mineEVMBlock();
+
+      // Redeemable 200
+      await expectBalance(300);
     });
   });
 });
