@@ -129,12 +129,16 @@ contract RedemptionController is Initializable, AccessControlUpgradeable {
                     }
                 }
             }
-            _mintsFirst[account] = --i;
+            _mintsFirst[account] = i - 1;
 
             // + expired redeemables within range
             Redeemable[] storage accountRedeemables = _redeemables[account];
 
-            for (i = 0; i < accountRedeemables.length; i++) {
+            for (
+                i = _redeemablesFirst[account];
+                i < accountRedeemables.length;
+                i++
+            ) {
                 Redeemable storage accountRedeemable = accountRedeemables[i];
                 if (
                     accountRedeemable.mintTimestamp >= threshold &&
@@ -162,6 +166,14 @@ contract RedemptionController is Initializable, AccessControlUpgradeable {
 
                         amount = 0;
                     }
+                }
+
+                if (
+                    i > 0 &&
+                    accountRedeemable.mintTimestamp < threshold &&
+                    block.timestamp >= accountRedeemable.end
+                ) {
+                    _redeemablesFirst[account] = i - 1;
                 }
             }
         }

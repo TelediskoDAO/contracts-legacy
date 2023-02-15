@@ -172,6 +172,53 @@ describe("RedemptionController", () => {
             });
           });
 
+          describe("and 71 days pass", async () => {
+            beforeEach(async () => {
+              await timeTravel(71);
+              await mineEVMBlock();
+            });
+
+            describe("and 5 tokens are offered again and 60 days pass", async () => {
+              beforeEach(async () => {
+                await redemptionController.afterOffer(account.address, 5);
+
+                await timeTravel(60);
+                await mineEVMBlock();
+              });
+
+              it("returns 5", async () => {
+                await expectBalance(5);
+              });
+
+              describe("and 2 tokens are offered again", async () => {
+                beforeEach(async () => {
+                  await redemptionController.afterOffer(account.address, 2);
+                });
+
+                it("returns 2 60 days after redemption", async () => {
+                  await redemptionController.afterRedeem(account.address, 5);
+                  await timeTravel(60);
+                  await mineEVMBlock();
+
+                  await expectBalance(2);
+                });
+              });
+
+              describe("and 5 tokens are offered again", async () => {
+                beforeEach(async () => {
+                  await redemptionController.afterOffer(account.address, 2);
+                });
+
+                it("returns 2 60 days later", async () => {
+                  await timeTravel(60);
+                  await mineEVMBlock();
+
+                  await expectBalance(2);
+                });
+              });
+            });
+          });
+
           describe("and 2 more tokens are offered 5 days later", async () => {
             beforeEach(async () => {
               await timeTravel(5);
