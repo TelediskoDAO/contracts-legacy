@@ -21,6 +21,8 @@ describe("RedemptionController", () => {
   let redemptionController: RedemptionController;
   let deployer: SignerWithAddress, account: SignerWithAddress;
 
+  let TOKEN_MANAGER_ROLE: string;
+
   before(async () => {
     [deployer, account] = await ethers.getSigners();
 
@@ -37,6 +39,8 @@ describe("RedemptionController", () => {
       await redemptionController.TOKEN_MANAGER_ROLE(),
       deployer.address
     );
+
+    TOKEN_MANAGER_ROLE = await redemptionController.TOKEN_MANAGER_ROLE();
   });
 
   beforeEach(async () => {
@@ -60,7 +64,7 @@ describe("RedemptionController", () => {
       await expect(
         redemptionController.connect(account).afterMint(account.address, 32)
       ).revertedWith(
-        `AccessControl: account ${account.address.toLowerCase()} is missing role ${await redemptionController.TOKEN_MANAGER_ROLE()}`
+        `AccessControl: account ${account.address.toLowerCase()} is missing role ${TOKEN_MANAGER_ROLE}`
       );
     });
   });
@@ -70,7 +74,7 @@ describe("RedemptionController", () => {
       await expect(
         redemptionController.connect(account).afterOffer(account.address, 32)
       ).revertedWith(
-        `AccessControl: account ${account.address.toLowerCase()} is missing role ${await redemptionController.TOKEN_MANAGER_ROLE()}`
+        `AccessControl: account ${account.address.toLowerCase()} is missing role ${TOKEN_MANAGER_ROLE}`
       );
     });
   });
@@ -80,7 +84,7 @@ describe("RedemptionController", () => {
       await expect(
         redemptionController.connect(account).afterRedeem(account.address, 32)
       ).revertedWith(
-        `AccessControl: account ${account.address.toLowerCase()} is missing role ${await redemptionController.TOKEN_MANAGER_ROLE()}`
+        `AccessControl: account ${account.address.toLowerCase()} is missing role ${TOKEN_MANAGER_ROLE}`
       );
     });
 
