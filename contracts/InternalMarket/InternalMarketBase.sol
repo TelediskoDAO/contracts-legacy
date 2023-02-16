@@ -166,11 +166,12 @@ contract InternalMarketBase {
     }
 
     function _redeem(address from, uint256 amount) internal virtual {
-        if (withdrawableBalanceOf(from) < amount) {
+        uint256 withdrawableBalance = withdrawableBalanceOf(from);
+        if (withdrawableBalance < amount) {
             erc20.transferFrom(
                 from,
                 address(this),
-                amount - withdrawableBalanceOf(from)
+                amount - withdrawableBalance
             );
         }
         _withdraw(from, reserve, amount);
