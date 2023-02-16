@@ -4,6 +4,8 @@ import { ethers, upgrades } from "hardhat";
 import {
   InternalMarket,
   InternalMarket__factory,
+  RedemptionController,
+  RedemptionController__factory,
   ShareholderRegistry,
   TelediskoToken,
   Voting,
@@ -26,6 +28,7 @@ export async function deployDAO(
   let registry: ShareholderRegistry;
   let resolution: ResolutionManager;
   let market: InternalMarket;
+  let redemption: RedemptionController;
 
   const VotingFactory = (await ethers.getContractFactory(
     "Voting",
@@ -37,11 +40,6 @@ export async function deployDAO(
     deployer
   )) as TelediskoToken__factory;
 
-  const InternalMarketFactory = (await ethers.getContractFactory(
-    "InternalMarket",
-    deployer
-  )) as InternalMarket__factory;
-
   const ShareholderRegistryFactory = (await ethers.getContractFactory(
     "ShareholderRegistry",
     deployer
@@ -51,6 +49,16 @@ export async function deployDAO(
     "ResolutionManager",
     deployer
   )) as ResolutionManager__factory;
+
+  const InternalMarketFactory = (await ethers.getContractFactory(
+    "InternalMarket",
+    deployer
+  )) as InternalMarket__factory;
+
+  const RedemptionControllerFactory = (await ethers.getContractFactory(
+    "RedemptionController",
+    deployer
+  )) as RedemptionController__factory;
 
   voting = (await upgrades.deployProxy(VotingFactory, {
     initializer: "initialize",
@@ -76,10 +84,16 @@ export async function deployDAO(
   )) as ShareholderRegistry;
   await registry.deployed();
 
+  redemption = (await upgrades.deployProxy(RedemptionControllerFactory, {
+    initializer: "initialize",
+  })) as RedemptionController;
+  await redemption.deployed();
+
   const operatorRole = await roles.OPERATOR_ROLE();
   const resolutionRole = await roles.RESOLUTION_ROLE();
   const shareholderRegistryRole = await roles.SHAREHOLDER_REGISTRY_ROLE();
   const escrowRole = await roles.ESCROW_ROLE();
+  const tokenManagerRole = await roles.TOKEN_MANAGER_ROLE();
 
   await registry.grantRole(operatorRole, deployer.address);
   await registry.grantRole(resolutionRole, deployer.address);
@@ -100,6 +114,10 @@ export async function deployDAO(
   await token.setVoting(voting.address);
 
   await registry.setVoting(voting.address);
+
+  await redemption.grantRole(tokenManagerRole, token.address);
+  await redemption.grantRole(tokenManagerRole, market.address);
+  await redemption.grantRole(tokenManagerRole, market.address);
 
   await token.setInternalMarket(market.address);
 
@@ -122,5 +140,5 @@ export async function deployDAO(
   await registry.mint(managingBoard.address, parseEther("1"));
   await registry.setStatus(managingBoardStatus, managingBoard.address);
 
-  return { voting, token, registry, resolution, market };
+  return { voting, token, registry, resolution, market, redemption };
 }
