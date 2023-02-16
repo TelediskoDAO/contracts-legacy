@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Roles } from "../extensions/Roles.sol";
-import "hardhat/console.sol";
+import "./IRedemptionController.sol";
 
 // Redeemable tokens are decided on Offer
 // - when user offers, we check how many tokens are eligible for redemption (3 months, 15 months rule)
@@ -19,9 +19,13 @@ import "hardhat/console.sol";
 // - when the 10 days expire
 //    -
 
-// The contract has to tell how many tokens are redeemable today
-//
-contract RedemptionController is Initializable, AccessControlUpgradeable {
+// The contract tells how many tokens are redeemable by Contributors
+
+contract RedemptionController is
+    IRedemptionController,
+    Initializable,
+    AccessControlUpgradeable
+{
     uint256 constant TIME_TO_REDEMPTION = 60 days;
     uint256 redemptionPeriod;
 
@@ -55,11 +59,17 @@ contract RedemptionController is Initializable, AccessControlUpgradeable {
     mapping(address => MintBudget[]) internal _mintBudgets;
     mapping(address => uint256) internal _mintBudgetsStartIndex;
 
-    function afterMint(
-        address account,
+    function afterTokenTransfer(
+        address from,
+        address to,
         uint256 amount
     ) external onlyRole(TOKEN_MANAGER_ROLE) {
-        _mintBudgets[account].push(MintBudget(block.timestamp, amount));
+        // If it's a mint then add it to the mint budget for that address
+        // FIXME: should we check if the user is a contributor? Worst case we end up having
+        // minting entries that will never be used.
+        if (from == address(0)) {
+            _mintBudgets[to].push(MintBudget(block.timestamp, amount));
+        }
     }
 
     function _addRedeemable(
