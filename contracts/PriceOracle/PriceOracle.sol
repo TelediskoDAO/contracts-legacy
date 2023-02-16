@@ -8,7 +8,7 @@ contract PriceOracle is IStdReference, AccessControl {
     event RefDataUpdate(string symbol, uint64 rate, uint64 resolveTime);
 
     struct RefData {
-        uint64 rate; // USD-rate, multiplied by 1e9.
+        uint64 rate; // USD-rate, multiplied by 1e18.
         uint64 resolveTime; // UNIX epoch when data is last resolved.
     }
 
@@ -37,12 +37,10 @@ contract PriceOracle is IStdReference, AccessControl {
         }
     }
 
-    function getReferenceData(string memory _base, string memory _quote)
-        public
-        view
-        override
-        returns (ReferenceData memory)
-    {
+    function getReferenceData(
+        string memory _base,
+        string memory _quote
+    ) public view override returns (ReferenceData memory) {
         (uint256 baseRate, uint256 baseLastUpdate) = _getRefData(_base);
         (uint256 quoteRate, uint256 quoteLastUpdate) = _getRefData(_quote);
         return
@@ -53,22 +51,18 @@ contract PriceOracle is IStdReference, AccessControl {
             });
     }
 
-    function getReferenceDataBulk(string[] memory, string[] memory)
-        public
-        pure
-        override
-        returns (ReferenceData[] memory)
-    {
+    function getReferenceDataBulk(
+        string[] memory,
+        string[] memory
+    ) public pure override returns (ReferenceData[] memory) {
         revert("NOT_IMPLEMENTED");
     }
 
-    function _getRefData(string memory _symbol)
-        internal
-        view
-        returns (uint256 rate, uint256 lastUpdate)
-    {
+    function _getRefData(
+        string memory _symbol
+    ) internal view returns (uint256 rate, uint256 lastUpdate) {
         if (keccak256(bytes(_symbol)) == keccak256(bytes("USD"))) {
-            return (1e9, block.timestamp);
+            return (1e18, block.timestamp);
         }
         RefData storage refData = refs[_symbol];
         require(refData.resolveTime > 0, "REF_DATA_NOT_AVAILABLE");
