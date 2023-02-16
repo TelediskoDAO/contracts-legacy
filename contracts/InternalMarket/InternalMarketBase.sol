@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../RedemptionController/IRedemptionController.sol";
 import "hardhat/console.sol";
 
 contract InternalMarketBase {
@@ -27,6 +28,11 @@ contract InternalMarketBase {
     event OfferMatched(uint128 id, address from, address to, uint256 amount);
 
     IERC20 public erc20;
+    IERC20 public stableErc20;
+
+    IRedemptionController redemptionController;
+
+    address public reserve;
     uint256 public offerDuration = 7 days;
 
     mapping(address => Offers) internal _offers;
@@ -45,6 +51,20 @@ contract InternalMarketBase {
         erc20 = erc20_;
     }
 
+    function _setStableERC20(IERC20 stableErc20_) internal virtual {
+        stableErc20 = stableErc20_;
+    }
+
+    function _setReserve(address reserve_) internal virtual {
+        reserve = reserve_;
+    }
+
+    function _setRedemptionController(
+        IRedemptionController redemptionController_
+    ) internal virtual {
+        redemptionController = redemptionController_;
+    }
+
     function _setOfferDuration(uint duration) internal virtual {
         offerDuration = duration;
     }
@@ -56,6 +76,8 @@ contract InternalMarketBase {
         uint128 id = _enqueue(_offers[from], Offer(expiredAt, amount));
 
         _vaultContributors[from] += amount;
+
+        redemptionController.afterOffer(from, amount);
 
         emit OfferCreated(id, from, amount, expiredAt);
     }
@@ -134,6 +156,27 @@ contract InternalMarketBase {
     ) internal virtual {
         _beforeMatchOffer(from, to, amount);
         erc20.transfer(to, amount);
+        stableErc20.transferFrom(to, from, _calculateExchange(amount));
+    }
+
+    function _redeem(address from, uint256 amount) internal virtual {
+        if (withdrawableBalanceOf(from) < amount) {
+            erc20.transferFrom(
+                from,
+                address(this),
+                amount - withdrawableBalanceOf(from)
+            );
+        }
+        _withdraw(from, reserve, amount);
+        stableErc20.transferFrom(reserve, from, _calculateExchange(amount));
+        redemptionController.afterRedeem(from, amount);
+    }
+
+    function _calculateExchange(
+        uint256 eurAmount
+    ) internal pure returns (uint256) {
+        // TODO: calculate conversion rate with oracle
+        return eurAmount;
     }
 
     function _calculateOffersOf(
