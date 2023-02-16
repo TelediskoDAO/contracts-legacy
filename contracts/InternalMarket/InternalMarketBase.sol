@@ -180,8 +180,9 @@ contract InternalMarketBase {
     }
 
     function _convertToUSDC(uint256 eurAmount) internal view returns (uint256) {
-        uint256 exchangeRate = stdReference.getReferenceData("eur", "usd").rate;
-        return eurAmount * exchangeRate;
+        uint256 eurUsd = stdReference.getReferenceData("eur", "usd").rate;
+        uint256 usdUsdc = stdReference.getReferenceData("usdc", "usd").rate;
+        return (eurAmount * eurUsd) / usdUsdc;
     }
 
     function _calculateOffersOf(
