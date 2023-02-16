@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../RedemptionController/IRedemptionController.sol";
+import "../PriceOracle/IStdReference.sol";
 import "hardhat/console.sol";
 
 contract InternalMarketBase {
@@ -28,9 +29,10 @@ contract InternalMarketBase {
     event OfferMatched(uint128 id, address from, address to, uint256 amount);
 
     IERC20 public erc20;
-    IERC20 public stableErc20;
+    IERC20 public usdc;
 
     IRedemptionController redemptionController;
+    IStdReference stdReference;
 
     address public reserve;
     uint256 public offerDuration = 7 days;
@@ -51,8 +53,8 @@ contract InternalMarketBase {
         erc20 = erc20_;
     }
 
-    function _setStableERC20(IERC20 stableErc20_) internal virtual {
-        stableErc20 = stableErc20_;
+    function _setUSDC(IERC20 usdc_) internal virtual {
+        usdc = usdc_;
     }
 
     function _setReserve(address reserve_) internal virtual {
@@ -63,6 +65,10 @@ contract InternalMarketBase {
         IRedemptionController redemptionController_
     ) internal virtual {
         redemptionController = redemptionController_;
+    }
+
+    function _setStdReference(IStdReference stdReference_) internal virtual {
+        stdReference = stdReference_;
     }
 
     function _setOfferDuration(uint duration) internal virtual {
@@ -156,7 +162,7 @@ contract InternalMarketBase {
     ) internal virtual {
         _beforeMatchOffer(from, to, amount);
         erc20.transfer(to, amount);
-        stableErc20.transferFrom(to, from, _calculateExchange(amount));
+        usdc.transferFrom(to, from, _convertToUSDC(amount));
     }
 
     function _redeem(address from, uint256 amount) internal virtual {
@@ -168,15 +174,13 @@ contract InternalMarketBase {
             );
         }
         _withdraw(from, reserve, amount);
-        stableErc20.transferFrom(reserve, from, _calculateExchange(amount));
+        usdc.transferFrom(reserve, from, _convertToUSDC(amount));
         redemptionController.afterRedeem(from, amount);
     }
 
-    function _calculateExchange(
-        uint256 eurAmount
-    ) internal pure returns (uint256) {
-        // TODO: calculate conversion rate with oracle
-        return eurAmount;
+    function _convertToUSDC(uint256 eurAmount) internal view returns (uint256) {
+        uint256 exchangeRate = stdReference.getReferenceData("eur", "usd").rate;
+        return eurAmount * exchangeRate;
     }
 
     function _calculateOffersOf(
