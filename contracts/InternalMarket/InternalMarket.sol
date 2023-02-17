@@ -10,8 +10,8 @@ import "./InternalMarketBase.sol";
 import { Roles } from "../extensions/Roles.sol";
 
 contract InternalMarket is InternalMarketBase, AccessControl {
-    constructor(IERC20 erc20_) {
-        erc20 = erc20_;
+    constructor(IERC20 _daoToken) {
+        daoToken = _daoToken;
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
@@ -31,12 +31,15 @@ contract InternalMarket is InternalMarketBase, AccessControl {
         _withdraw(_msgSender(), to, amount);
     }
 
-    function setERC20(IERC20 erc20) public onlyRole(Roles.RESOLUTION_ROLE) {
-        _setERC20(erc20);
+    function setDaoToken(IERC20 token) public onlyRole(Roles.RESOLUTION_ROLE) {
+        _setDaoToken(token);
     }
 
-    function setUSDC(IERC20 usdc) public onlyRole(Roles.RESOLUTION_ROLE) {
-        _setUSDC(usdc);
+    function setExchangePair(
+        IERC20 token,
+        IStdReference oracle
+    ) public onlyRole(Roles.RESOLUTION_ROLE) {
+        _setExchangePair(token, oracle);
     }
 
     function setReserve(
@@ -49,12 +52,6 @@ contract InternalMarket is InternalMarketBase, AccessControl {
         IRedemptionController redemptionController
     ) public onlyRole(Roles.RESOLUTION_ROLE) {
         _setRedemptionController(redemptionController);
-    }
-
-    function setStdReference(
-        IStdReference stdReference
-    ) public onlyRole(Roles.RESOLUTION_ROLE) {
-        _setStdReference(stdReference);
     }
 
     function setOfferDuration(

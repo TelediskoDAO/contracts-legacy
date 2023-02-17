@@ -28,11 +28,11 @@ contract InternalMarketBase {
 
     event OfferMatched(uint128 id, address from, address to, uint256 amount);
 
-    IERC20 public erc20;
-    IERC20 public usdc;
+    IERC20 public daoToken;
+    IERC20 public exchangeToken;
 
     IRedemptionController public redemptionController;
-    IStdReference public stdReference;
+    IStdReference public priceOracle;
 
     address public reserve;
     uint256 public offerDuration = 7 days;
@@ -49,12 +49,16 @@ contract InternalMarketBase {
         return offers.end++;
     }
 
-    function _setERC20(IERC20 erc20_) internal virtual {
-        erc20 = erc20_;
+    function _setDaoToken(IERC20 token) internal virtual {
+        daoToken = token;
     }
 
-    function _setUSDC(IERC20 usdc_) internal virtual {
-        usdc = usdc_;
+    function _setExchangePair(
+        IERC20 token,
+        IStdReference oracle
+    ) internal virtual {
+        exchangeToken = token;
+        priceOracle = oracle;
     }
 
     function _setReserve(address reserve_) internal virtual {
@@ -67,16 +71,12 @@ contract InternalMarketBase {
         redemptionController = redemptionController_;
     }
 
-    function _setStdReference(IStdReference stdReference_) internal virtual {
-        stdReference = stdReference_;
-    }
-
     function _setOfferDuration(uint duration) internal virtual {
         offerDuration = duration;
     }
 
     function _makeOffer(address from, uint256 amount) internal virtual {
-        erc20.transferFrom(from, address(this), amount);
+        daoToken.transferFrom(from, address(this), amount);
 
         uint256 expiredAt = block.timestamp + offerDuration;
         uint128 id = _enqueue(_offers[from], Offer(expiredAt, amount));
@@ -152,7 +152,7 @@ contract InternalMarketBase {
         uint256 amount
     ) internal virtual {
         _beforeWithdraw(from, amount);
-        erc20.transfer(to, amount);
+        daoToken.transfer(to, amount);
     }
 
     function _matchOffer(
@@ -161,27 +161,27 @@ contract InternalMarketBase {
         uint256 amount
     ) internal virtual {
         _beforeMatchOffer(from, to, amount);
-        erc20.transfer(to, amount);
-        usdc.transferFrom(to, from, _convertToUSDC(amount));
+        daoToken.transfer(to, amount);
+        exchangeToken.transferFrom(to, from, _convertToUSDC(amount));
     }
 
     function _redeem(address from, uint256 amount) internal virtual {
         uint256 withdrawableBalance = withdrawableBalanceOf(from);
         if (withdrawableBalance < amount) {
-            erc20.transferFrom(
+            daoToken.transferFrom(
                 from,
                 address(this),
                 amount - withdrawableBalance
             );
         }
         _withdraw(from, reserve, amount);
-        usdc.transferFrom(reserve, from, _convertToUSDC(amount));
+        exchangeToken.transferFrom(reserve, from, _convertToUSDC(amount));
         redemptionController.afterRedeem(from, amount);
     }
 
     function _convertToUSDC(uint256 eurAmount) internal view returns (uint256) {
-        uint256 eurUsd = stdReference.getReferenceData("eur", "usd").rate;
-        uint256 usdUsdc = stdReference.getReferenceData("usdc", "usd").rate;
+        uint256 eurUsd = priceOracle.getReferenceData("eur", "usd").rate;
+        uint256 usdUsdc = priceOracle.getReferenceData("usdc", "usd").rate;
         return (eurAmount * eurUsd) / usdUsdc;
     }
 

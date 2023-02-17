@@ -33,7 +33,6 @@ describe("InternalMarket", async () => {
   let stdReference: FakeContract<IStdReference>;
   let usdc: FakeContract<IERC20>;
   let deployer: SignerWithAddress;
-  let account: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
@@ -41,7 +40,7 @@ describe("InternalMarket", async () => {
   let offerDuration: number;
 
   before(async () => {
-    [deployer, account, alice, bob, carol, reserve] = await ethers.getSigners();
+    [deployer, alice, bob, carol, reserve] = await ethers.getSigners();
 
     token = await smock.fake("IERC20");
     usdc = await smock.fake("IERC20");
@@ -64,8 +63,7 @@ describe("InternalMarket", async () => {
     offerDuration = (await internalMarket.offerDuration()).toNumber();
 
     await internalMarket.setRedemptionController(redemption.address);
-    await internalMarket.setStdReference(stdReference.address);
-    await internalMarket.setUSDC(usdc.address);
+    await internalMarket.setExchangePair(usdc.address, stdReference.address);
     await internalMarket.setReserve(reserve.address);
 
     // Exchange rate is always 1
@@ -87,17 +85,20 @@ describe("InternalMarket", async () => {
     await network.provider.send("evm_revert", [snapshotId]);
   });
 
-  describe("setERC20", async () => {
-    it("should allow a resolution to set the token address", async () => {
+  describe("setExchangePair", async () => {
+    it("should allow a resolution to set token and oracle addresses", async () => {
       // Alice is not a token, but it's a valid address, so we use it to test this function
-      await internalMarket.setERC20(alice.address);
-      expect(await internalMarket.erc20()).equal(alice.address);
+      await internalMarket.setExchangePair(alice.address, alice.address);
+      expect(await internalMarket.exchangeToken()).equal(alice.address);
+      expect(await internalMarket.priceOracle()).equal(alice.address);
     });
 
     it("should revert if anyone else tries to set the token address", async () => {
       // Alice is not a token, but it's a valid address, so we use it to test this function
       await expect(
-        internalMarket.connect(alice).setERC20(alice.address)
+        internalMarket
+          .connect(alice)
+          .setExchangePair(alice.address, alice.address)
       ).revertedWith(
         `AccessControl: account ${alice.address.toLowerCase()} is missing role ${RESOLUTION_ROLE}`
       );

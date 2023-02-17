@@ -1,9 +1,13 @@
+import { FakeContract, smock } from "@defi-wonderland/smock";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { parseEther } from "ethers/lib/utils";
 import { ethers, upgrades } from "hardhat";
 import {
+  IERC20,
   InternalMarket,
   InternalMarket__factory,
+  PriceOracle,
+  PriceOracle__factory,
   RedemptionController,
   RedemptionController__factory,
   ShareholderRegistry,
@@ -25,10 +29,15 @@ export async function deployDAO(
 ) {
   let voting: Voting;
   let token: TelediskoToken;
+  let usdc: FakeContract<IERC20>;
   let registry: ShareholderRegistry;
   let resolution: ResolutionManager;
   let market: InternalMarket;
   let redemption: RedemptionController;
+  let oracle: PriceOracle;
+
+  // Load factories
+  ///////////////////
 
   const VotingFactory = (await ethers.getContractFactory(
     "Voting",
@@ -60,6 +69,14 @@ export async function deployDAO(
     deployer
   )) as RedemptionController__factory;
 
+  const PriceOracleFactory = (await ethers.getContractFactory(
+    "PriceOracle",
+    deployer
+  )) as PriceOracle__factory;
+
+  // Deploy and initialize contacts
+  ///////////////////////////////////
+
   voting = (await upgrades.deployProxy(VotingFactory, {
     initializer: "initialize",
   })) as Voting;
@@ -71,6 +88,19 @@ export async function deployDAO(
     { initializer: "initialize" }
   )) as TelediskoToken;
   await token.deployed();
+
+  usdc = await smock.fake("IERC20");
+
+  oracle = await PriceOracleFactory.deploy();
+  await oracle.deployed();
+
+  await oracle.relay(["eur", "usd"], [1, 1], [1, 1]);
+  await oracle.relay(["usdc", "usd"], [1, 1], [1, 1]);
+
+  redemption = (await upgrades.deployProxy(RedemptionControllerFactory, {
+    initializer: "initialize",
+  })) as RedemptionController;
+  await redemption.deployed();
 
   market = await InternalMarketFactory.deploy(token.address);
   await market.deployed();
@@ -84,10 +114,17 @@ export async function deployDAO(
   )) as ShareholderRegistry;
   await registry.deployed();
 
-  redemption = (await upgrades.deployProxy(RedemptionControllerFactory, {
-    initializer: "initialize",
-  })) as RedemptionController;
-  await redemption.deployed();
+  resolution = (await upgrades.deployProxy(
+    ResolutionFactory,
+    [registry.address, token.address, voting.address],
+    {
+      initializer: "initialize",
+    }
+  )) as ResolutionManager;
+  await resolution.deployed();
+
+  // Set ACLs and other interdependencies
+  /////////////////////////////////////////
 
   const operatorRole = await roles.OPERATOR_ROLE();
   const resolutionRole = await roles.RESOLUTION_ROLE();
@@ -106,6 +143,7 @@ export async function deployDAO(
   await token.grantRole(resolutionRole, deployer.address);
 
   await market.grantRole(escrowRole, deployer.address);
+  await market.grantRole(resolutionRole, deployer.address);
 
   await voting.setShareholderRegistry(registry.address);
   await voting.setToken(token.address);
@@ -120,25 +158,22 @@ export async function deployDAO(
   await redemption.grantRole(tokenManagerRole, market.address);
 
   await token.setInternalMarket(market.address);
-
-  resolution = (await upgrades.deployProxy(
-    ResolutionFactory,
-    [registry.address, token.address, voting.address],
-    {
-      initializer: "initialize",
-    }
-  )) as ResolutionManager;
-  await resolution.deployed();
+  await token.setRedemptionController(redemption.address);
 
   await registry.grantRole(resolutionRole, resolution.address);
   await voting.grantRole(resolutionRole, resolution.address);
   await token.grantRole(resolutionRole, resolution.address);
   await resolution.grantRole(resolutionRole, resolution.address);
 
-  var managingBoardStatus = await registry.MANAGING_BOARD_STATUS();
+  const managingBoardStatus = await registry.MANAGING_BOARD_STATUS();
 
   await registry.mint(managingBoard.address, parseEther("1"));
   await registry.setStatus(managingBoardStatus, managingBoard.address);
+
+  await market.setRedemptionController(redemption.address);
+  await market.setExchangePair(usdc.address, oracle.address);
+  // FIXME
+  await market.setReserve(deployer.address);
 
   return { voting, token, registry, resolution, market, redemption };
 }
