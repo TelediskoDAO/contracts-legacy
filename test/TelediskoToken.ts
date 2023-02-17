@@ -123,7 +123,7 @@ describe("TelediskoToken", () => {
     await network.provider.send("evm_revert", [snapshotId]);
   });
 
-  describe.only("token transfer logic", async () => {
+  describe("token transfer logic", async () => {
     it("should call the Voting hook after a minting", async () => {
       await expect(telediskoToken.mint(account.address, 10))
         .emit(voting, "AfterTokenTransferCalled")
