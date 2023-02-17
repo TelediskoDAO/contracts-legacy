@@ -31,8 +31,8 @@ contract InternalMarketBase {
     IERC20 public erc20;
     IERC20 public usdc;
 
-    IRedemptionController redemptionController;
-    IStdReference stdReference;
+    IRedemptionController public redemptionController;
+    IStdReference public stdReference;
 
     address public reserve;
     uint256 public offerDuration = 7 days;

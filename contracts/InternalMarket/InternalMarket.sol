@@ -35,6 +35,28 @@ contract InternalMarket is InternalMarketBase, AccessControl {
         _setERC20(erc20);
     }
 
+    function setUSDC(IERC20 usdc) public onlyRole(Roles.RESOLUTION_ROLE) {
+        _setUSDC(usdc);
+    }
+
+    function setReserve(
+        address reserve
+    ) public onlyRole(Roles.RESOLUTION_ROLE) {
+        _setReserve(reserve);
+    }
+
+    function setRedemptionController(
+        IRedemptionController redemptionController
+    ) public onlyRole(Roles.RESOLUTION_ROLE) {
+        _setRedemptionController(redemptionController);
+    }
+
+    function setStdReference(
+        IStdReference stdReference
+    ) public onlyRole(Roles.RESOLUTION_ROLE) {
+        _setStdReference(stdReference);
+    }
+
     function setOfferDuration(
         uint duration
     ) public onlyRole(Roles.RESOLUTION_ROLE) {

@@ -6,7 +6,14 @@ import { solidity } from "ethereum-waffle";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
 import { roles } from "./utils/roles";
-import { IERC20, InternalMarket, InternalMarket__factory } from "../typechain";
+import {
+  IERC20,
+  InternalMarket,
+  InternalMarket__factory,
+  IRedemptionController,
+  IStdReference,
+} from "../typechain";
+import { parseEther } from "ethers/lib/utils";
 
 chai.use(smock.matchers);
 chai.use(solidity);
@@ -22,23 +29,31 @@ describe("InternalMarket", async () => {
   let RESOLUTION_ROLE: string, ESCROW_ROLE: string;
   let token: FakeContract<IERC20>;
   let internalMarket: InternalMarket;
+  let redemption: FakeContract<IRedemptionController>;
+  let stdReference: FakeContract<IStdReference>;
+  let usdc: FakeContract<IERC20>;
   let deployer: SignerWithAddress;
   let account: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let carol: SignerWithAddress;
+  let reserve: SignerWithAddress;
   let offerDuration: number;
 
   before(async () => {
-    [deployer, account, alice, bob, carol] = await ethers.getSigners();
+    [deployer, account, alice, bob, carol, reserve] = await ethers.getSigners();
 
     token = await smock.fake("IERC20");
+    usdc = await smock.fake("IERC20");
 
     const InternalMarketFactory = (await ethers.getContractFactory(
       "InternalMarket",
       deployer
     )) as InternalMarket__factory;
     internalMarket = await InternalMarketFactory.deploy(token.address);
+
+    redemption = await smock.fake("IRedemptionController");
+    stdReference = await smock.fake("IStdReference");
 
     RESOLUTION_ROLE = await roles.RESOLUTION_ROLE();
     await internalMarket.grantRole(RESOLUTION_ROLE, deployer.address);
@@ -47,6 +62,18 @@ describe("InternalMarket", async () => {
     await internalMarket.grantRole(ESCROW_ROLE, deployer.address);
 
     offerDuration = (await internalMarket.offerDuration()).toNumber();
+
+    await internalMarket.setRedemptionController(redemption.address);
+    await internalMarket.setStdReference(stdReference.address);
+    await internalMarket.setUSDC(usdc.address);
+    await internalMarket.setReserve(reserve.address);
+
+    // Exchange rate is always 1
+    stdReference.getReferenceData.returns({
+      rate: parseEther("1"),
+      lastUpdatedBase: parseEther("0"),
+      lastUpdatedQuote: parseEther("0"),
+    });
 
     // make transferFrom always succeed
     token.transferFrom.returns();
