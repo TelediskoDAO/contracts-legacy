@@ -185,10 +185,6 @@ describe("InternalMarket", async () => {
         // Make offer `11` expire
         await setEVMTimestamp(ts + WEEK + DAY);
         await expect(internalMarket.matchOffer(alice.address, bob.address, 25))
-          /* TODO:
-          .emit(internalMarket, "OfferExpired")
-          .withArgs(0, alice.address, 11)
-          */
           .emit(internalMarket, "OfferMatched")
           .withArgs(1, alice.address, bob.address, 25);
         expect(token.transfer).calledWith(bob.address, 25);
@@ -218,6 +214,160 @@ describe("InternalMarket", async () => {
         await expect(
           internalMarket.matchOffer(alice.address, bob.address, 36)
         ).revertedWith("InternalMarket: amount exceeds offer");
+      });
+
+      describe("when the exchange rate is 1/1", async () => {
+        beforeEach(async () => {
+          stdReference.getReferenceData.whenCalledWith("eur", "usd").returns({
+            rate: parseEther("1"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+          stdReference.getReferenceData.whenCalledWith("usdc", "usd").returns({
+            rate: parseEther("1"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+        });
+
+        it("should exchange the 10 DAO tokens for 10 USDC", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 10);
+          expect(token.transfer).calledWith(bob.address, 10);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 10);
+        });
+      });
+
+      describe("when the exchange rate is 1/2", async () => {
+        beforeEach(async () => {
+          stdReference.getReferenceData.whenCalledWith("eur", "usd").returns({
+            rate: parseEther("2"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+          stdReference.getReferenceData.whenCalledWith("usdc", "usd").returns({
+            rate: parseEther("1"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+        });
+
+        it("should exchange the 10 DAO tokens sats for 20 USDC sats", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 10);
+          expect(token.transfer).calledWith(bob.address, 10);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 20);
+        });
+
+        it("should exchange the 10 DAO token for 20 USDC", async () => {
+          await internalMarket.connect(alice).makeOffer(parseEther("10"));
+
+          await internalMarket.matchOffer(
+            alice.address,
+            bob.address,
+            parseEther("10")
+          );
+          expect(token.transfer).calledWith(bob.address, parseEther("10"));
+          expect(usdc.transferFrom).calledWith(
+            bob.address,
+            alice.address,
+            parseEther("20")
+          );
+        });
+      });
+
+      describe("when the exchange rate is 1.12 eur/usd and 0.998 usdc/usd", async () => {
+        beforeEach(async () => {
+          stdReference.getReferenceData.whenCalledWith("eur", "usd").returns({
+            rate: parseEther("1.12"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+          stdReference.getReferenceData.whenCalledWith("usdc", "usd").returns({
+            rate: parseEther("0.998"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+        });
+
+        it("should exchange the 10 DAO tokens for 11.22244488977956 USDC", async () => {
+          await internalMarket.connect(alice).makeOffer(parseEther("10"));
+
+          await internalMarket.matchOffer(
+            alice.address,
+            bob.address,
+            parseEther("10")
+          );
+          expect(token.transfer).calledWith(bob.address, parseEther("10"));
+          expect(usdc.transferFrom).calledWith(
+            bob.address,
+            alice.address,
+            parseEther("11.222444889779559118")
+          );
+        });
+
+        it("should exchange the 10 DAO token for 20 USDC", async () => {
+          await internalMarket.connect(alice).makeOffer(parseEther("10"));
+
+          await internalMarket.matchOffer(
+            alice.address,
+            bob.address,
+            parseEther("10")
+          );
+          expect(token.transfer).calledWith(bob.address, parseEther("10"));
+          expect(usdc.transferFrom).calledWith(
+            bob.address,
+            alice.address,
+            parseEther("20")
+          );
+        });
+      });
+
+      describe("when the exchange rate is 2/1", async () => {
+        beforeEach(async () => {
+          stdReference.getReferenceData.whenCalledWith("eur", "usd").returns({
+            rate: parseEther("1"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+          stdReference.getReferenceData.whenCalledWith("usdc", "usd").returns({
+            rate: parseEther("2"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+        });
+
+        it("should exchange the 10 DAO token sats for 5 USDC sats", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 10);
+          expect(token.transfer).calledWith(bob.address, 10);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 5);
+        });
+
+        it("should exchange the 11 DAO token sats for 5 USDC sats", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 11);
+          expect(token.transfer).calledWith(bob.address, 11);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 5);
+        });
+
+        it("should exchange the 11 DAO tokens for 5.5 USDC", async () => {
+          await internalMarket.connect(alice).makeOffer(parseEther("11"));
+
+          await internalMarket.matchOffer(
+            alice.address,
+            bob.address,
+            parseEther("11")
+          );
+          expect(token.transfer).calledWith(bob.address, parseEther("11"));
+          expect(usdc.transferFrom).calledWith(
+            bob.address,
+            alice.address,
+            parseEther("5.5")
+          );
+        });
+
+        it("should exchange the 1 DAO token sat for 0 USDC sats", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 1);
+          expect(token.transfer).calledWith(bob.address, 1);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 0);
+        });
       });
     });
 
