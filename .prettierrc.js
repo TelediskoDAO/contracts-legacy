@@ -1,15 +1,9 @@
 module.exports = {
+  plugins: [require("@trivago/prettier-plugin-sort-imports")],
+  importOrderSeparation: true,
+  importOrderSortSpecifiers: true,
+  importOrder: ["^../typechain", "^[./]"],
   overrides: [
-    {
-      files: ["*.ts", "*.js"],
-      options: {
-        printWidth: 80,
-        tabWidth: 2,
-        useTabs: false,
-        singleQuote: false,
-        bracketSpacing: true,
-      },
-    },
     {
       files: "*.sol",
       options: {
