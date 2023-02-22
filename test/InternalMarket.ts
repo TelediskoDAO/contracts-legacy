@@ -111,6 +111,23 @@ describe("InternalMarket", async () => {
     });
   });
 
+  describe("setDaoToken", async () => {
+    it("should allow a resolution to set token and oracle addresses", async () => {
+      // Alice is not a token, but it's a valid address, so we use it to test this function
+      await internalMarket.setDaoToken(alice.address);
+      expect(await internalMarket.daoToken()).equal(alice.address);
+    });
+
+    it("should revert if anyone else tries to set the token address", async () => {
+      // Alice is not a token, but it's a valid address, so we use it to test this function
+      await expect(
+        internalMarket.connect(alice).setDaoToken(alice.address)
+      ).revertedWith(
+        `AccessControl: account ${alice.address.toLowerCase()} is missing role ${RESOLUTION_ROLE}`
+      );
+    });
+  });
+
   describe("setOfferDuration", async () => {
     it("should allow a resolution to set duration of an offer", async () => {
       // Alice is not a token, but it's a valid address, so we use it to test this function
@@ -150,128 +167,18 @@ describe("InternalMarket", async () => {
     });
 
     describe("redeem", async () => {
-      describe("with 50 unlocked tokens and 100 locked tokens", async () => {
-        beforeEach(async () => {
-          await internalMarket.connect(alice).makeOffer(50);
-          let ts = await getEVMTimestamp();
-
-          // Unlock 50 tokens
-          await setEVMTimestamp(ts + DAY * 7);
-
-          // Lock 100 tokens
-          await internalMarket.connect(alice).makeOffer(100);
-        });
-
-        describe("and no tokens in the user wallet", async () => {
-          beforeEach(async () => {
-            token.transferFrom.revertsAtCall(2, "ERC20: insufficient balance");
-          });
-
-          it("should fail when the user redeems 70 tokens", async () => {
-            await expect(internalMarket.connect(alice).redeem(70)).revertedWith(
-              ""
-            );
-          });
-
-          it("should fail when the user redeems 60 tokens", async () => {
-            await expect(internalMarket.connect(alice).redeem(60)).revertedWith(
-              ""
-            );
-          });
-
-          describe("when user redeems 50 tokens", async () => {
-            beforeEach(async () => {
-              await internalMarket.connect(alice).redeem(50);
-            });
-
-            it("should transfer 50 tokens from market to reserve", async () => {
-              expect(token.transfer).calledWith(reserve.address, 50);
-            });
-
-            it("should transfer 50 usdc from reserve to alice", async () => {
-              expect(usdc.transferFrom).calledWith(
-                reserve.address,
-                alice.address,
-                50
-              );
-            });
-          });
-        });
-
-        describe("and 10 tokens in the user wallet", async () => {
-          beforeEach(async () => {
-            token.transferFrom
-              .whenCalledWith(alice.address, reserve.address, 20)
-              .reverts("ERC20: insufficient balance");
-          });
-
-          it("should fail when the user redeems 70 tokens", async () => {
-            await expect(internalMarket.connect(alice).redeem(70)).revertedWith(
-              ""
-            );
-          });
-
-          describe("when the user redeems 60 tokens", async () => {
-            beforeEach(async () => {
-              await internalMarket.connect(alice).redeem(60);
-            });
-
-            it("should transfer 10 tokens from alice to internal market and then to reserve", async () => {
-              expect(token.transferFrom).calledWith(
-                alice.address,
-                reserve.address,
-                10
-              );
-            });
-
-            it("should transfer 50 tokens from market to reserve", async () => {
-              expect(token.transfer).calledWith(reserve.address, 50);
-            });
-
-            it("should transfer 60 usdc from reserve to alice", async () => {
-              expect(usdc.transferFrom).calledWith(
-                reserve.address,
-                alice.address,
-                60
-              );
-            });
-          });
-
-          describe("when the user redeems 50 tokens", async () => {
-            beforeEach(async () => {
-              await internalMarket.connect(alice).redeem(50);
-            });
-
-            it("should not transfer 10 tokens from alice to reserve", async () => {
-              expect(token.transferFrom).not.calledWith(
-                alice.address,
-                reserve.address,
-                10
-              );
-            });
-
-            it("should transfer 50 tokens from market to reserve", async () => {
-              expect(token.transfer).calledWith(reserve.address, 50);
-            });
-
-            it("should transfer 50 usdc from reserve to alice", async () => {
-              expect(usdc.transferFrom).calledWith(
-                reserve.address,
-                alice.address,
-                50
-              );
-            });
-          });
-        });
-      });
-
-      describe("with 11 unlocked tokens (ether)", async () => {
+      describe("with some unlocked tokens", async () => {
         beforeEach(async () => {
           await internalMarket.connect(alice).makeOffer(parseEther("11"));
           let ts = await getEVMTimestamp();
 
           await setEVMTimestamp(ts + DAY * 7);
           await mineEVMBlock();
+        });
+        it("should call afterRedeem on redemptionController", async () => {
+          await internalMarket.connect(alice).redeem(50);
+
+          expect(redemption.afterRedeem).calledWith(alice.address, 50);
         });
 
         describe("when the exchange rate is 1/1", async () => {
@@ -439,6 +346,121 @@ describe("InternalMarket", async () => {
               alice.address,
               0
             );
+          });
+        });
+      });
+
+      describe("with 50 unlocked tokens and 100 locked tokens", async () => {
+        beforeEach(async () => {
+          await internalMarket.connect(alice).makeOffer(50);
+          let ts = await getEVMTimestamp();
+
+          // Unlock 50 tokens
+          await setEVMTimestamp(ts + DAY * 7);
+
+          // Lock 100 tokens
+          await internalMarket.connect(alice).makeOffer(100);
+        });
+
+        describe("and no tokens in the user wallet", async () => {
+          beforeEach(async () => {
+            token.transferFrom.revertsAtCall(2, "ERC20: insufficient balance");
+          });
+
+          it("should fail when the user redeems 70 tokens", async () => {
+            await expect(internalMarket.connect(alice).redeem(70)).revertedWith(
+              ""
+            );
+          });
+
+          it("should fail when the user redeems 60 tokens", async () => {
+            await expect(internalMarket.connect(alice).redeem(60)).revertedWith(
+              ""
+            );
+          });
+
+          describe("when user redeems 50 tokens", async () => {
+            beforeEach(async () => {
+              await internalMarket.connect(alice).redeem(50);
+            });
+
+            it("should transfer 50 tokens from market to reserve", async () => {
+              expect(token.transfer).calledWith(reserve.address, 50);
+            });
+
+            it("should transfer 50 usdc from reserve to alice", async () => {
+              expect(usdc.transferFrom).calledWith(
+                reserve.address,
+                alice.address,
+                50
+              );
+            });
+          });
+        });
+
+        describe("and 10 tokens in the user wallet", async () => {
+          beforeEach(async () => {
+            token.transferFrom
+              .whenCalledWith(alice.address, reserve.address, 20)
+              .reverts("ERC20: insufficient balance");
+          });
+
+          it("should fail when the user redeems 70 tokens", async () => {
+            await expect(internalMarket.connect(alice).redeem(70)).revertedWith(
+              ""
+            );
+          });
+
+          describe("when the user redeems 60 tokens", async () => {
+            beforeEach(async () => {
+              await internalMarket.connect(alice).redeem(60);
+            });
+
+            it("should transfer 10 tokens from alice to internal market and then to reserve", async () => {
+              expect(token.transferFrom).calledWith(
+                alice.address,
+                reserve.address,
+                10
+              );
+            });
+
+            it("should transfer 50 tokens from market to reserve", async () => {
+              expect(token.transfer).calledWith(reserve.address, 50);
+            });
+
+            it("should transfer 60 usdc from reserve to alice", async () => {
+              expect(usdc.transferFrom).calledWith(
+                reserve.address,
+                alice.address,
+                60
+              );
+            });
+          });
+
+          describe("when the user redeems 50 tokens", async () => {
+            beforeEach(async () => {
+              await internalMarket.connect(alice).redeem(50);
+            });
+
+            it("should not transfer 10 tokens from alice to reserve", async () => {
+              expect(token.transferFrom).not.calledWith(
+                alice.address,
+                reserve.address,
+                10
+              );
+            });
+
+            it("should transfer 50 tokens from market to reserve", async () => {
+              expect(token.transfer).calledWith(reserve.address, 50);
+            });
+
+            it("should transfer 50 usdc from reserve to alice", async () => {
+              expect(usdc.transferFrom).calledWith(
+                reserve.address,
+                alice.address,
+                50
+              );
+            });
           });
         });
       });
