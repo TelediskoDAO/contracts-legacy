@@ -31,6 +31,10 @@ contract InternalMarket is InternalMarketBase, AccessControl {
         _withdraw(_msgSender(), to, amount);
     }
 
+    function redeem(uint amount) public {
+        _redeem(_msgSender(), amount);
+    }
+
     function setDaoToken(IERC20 token) public onlyRole(Roles.RESOLUTION_ROLE) {
         _setDaoToken(token);
     }

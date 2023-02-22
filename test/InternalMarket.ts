@@ -14,6 +14,7 @@ import {
   IStdReference,
 } from "../typechain";
 import { parseEther } from "ethers/lib/utils";
+import { any } from "hardhat/internal/core/params/argumentTypes";
 
 chai.use(smock.matchers);
 chai.use(solidity);
@@ -141,6 +142,271 @@ describe("InternalMarket", async () => {
         internalMarket.address,
         1000
       );
+    });
+
+    describe("redeem", async () => {
+      describe("with 50 unlocked tokens and 100 locked tokens", async () => {
+        beforeEach(async () => {
+          await internalMarket.connect(alice).makeOffer(50);
+          let ts = await getEVMTimestamp();
+
+          // Unlock 50 tokens
+          await setEVMTimestamp(ts + DAY * 7);
+
+          // Lock 100 tokens
+          await internalMarket.connect(alice).makeOffer(100);
+        });
+
+        describe("and no tokens in the user wallet", async () => {
+          beforeEach(async () => {
+            token.transferFrom.reverts();
+          });
+
+          it("should fail when the user redeems 70 tokens", async () => {
+            await expect(internalMarket.connect(alice).redeem(70)).revertedWith(
+              ""
+            );
+          });
+
+          it("should fail when the user redeems 60 tokens", async () => {
+            await expect(internalMarket.connect(alice).redeem(60)).revertedWith(
+              ""
+            );
+          });
+
+          it("should exchange tokens for 50 usdc between alice and reserve when the user redeems 50 tokens", async () => {
+            await internalMarket.connect(alice).redeem(50);
+
+            expect(usdc.transferFrom).calledWith(
+              reserve.address,
+              alice.address,
+              50
+            );
+
+            expect(token.transfer).calledWith(reserve.address, 50);
+          });
+        });
+
+        describe("and 10 tokens in the user wallet", async () => {
+          beforeEach(async () => {
+            token.balanceOf.whenCalledWith(alice.address).returns(10);
+          });
+
+          it("should fail when the user redeems 70 tokens", async () => {
+            await expect(internalMarket.connect(alice).redeem(70)).revertedWith(
+              "InternalMarket: amount exceeds balance"
+            );
+          });
+
+          describe("when the user redeems 60 tokens", async () => {
+            before(async () => {
+              await internalMarket.connect(alice).redeem(60);
+            });
+
+            it("should transfer 10 tokens from alice to internal market and then to reserve", async () => {
+              expect(token.transferFrom).calledWith(
+                alice.address,
+                internalMarket.address,
+                10
+              );
+
+              expect(token.transfer).calledWith(
+                internalMarket.address,
+                reserve.address,
+                10
+              );
+            });
+
+            it("should exchange tokens for 60 usdc between alice and reserve", async () => {
+              expect(usdc.transferFrom).calledWith(
+                reserve.address,
+                alice.address,
+                60
+              );
+
+              expect(token.transfer).calledWith(reserve.address, 60);
+            });
+          });
+
+          describe("when the user redeems 50 tokens", async () => {
+            before(async () => {
+              await internalMarket.connect(alice).redeem(50);
+            });
+
+            it("should not transfer 10 tokens from alice to internal market", async () => {
+              expect(token.transferFrom).not.calledWith(
+                alice.address,
+                internalMarket.address,
+                10
+              );
+            });
+
+            it("should exchange tokens for 50 usdc between alice and dao", async () => {
+              expect(usdc.transferFrom).calledWith(
+                reserve.address,
+                alice.address,
+                50
+              );
+
+              expect(token.transfer).calledWith(reserve.address, 50);
+            });
+          });
+        });
+      });
+
+      describe("when the exchange rate is 1/1", async () => {
+        beforeEach(async () => {
+          stdReference.getReferenceData.whenCalledWith("eur", "usd").returns({
+            rate: parseEther("1"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+          stdReference.getReferenceData.whenCalledWith("usdc", "usd").returns({
+            rate: parseEther("1"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+        });
+
+        it("should exchange the 10 DAO tokens for 10 USDC", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 10);
+          expect(token.transfer).calledWith(bob.address, 10);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 10);
+        });
+      });
+
+      describe("when the exchange rate is 1/2", async () => {
+        beforeEach(async () => {
+          stdReference.getReferenceData.whenCalledWith("eur", "usd").returns({
+            rate: parseEther("2"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+          stdReference.getReferenceData.whenCalledWith("usdc", "usd").returns({
+            rate: parseEther("1"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+        });
+
+        it("should exchange the 10 DAO tokens sats for 20 USDC sats", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 10);
+          expect(token.transfer).calledWith(bob.address, 10);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 20);
+        });
+
+        it("should exchange the 10 DAO token for 20 USDC", async () => {
+          await internalMarket.connect(alice).makeOffer(parseEther("10"));
+
+          await internalMarket.matchOffer(
+            alice.address,
+            bob.address,
+            parseEther("10")
+          );
+          expect(token.transfer).calledWith(bob.address, parseEther("10"));
+          expect(usdc.transferFrom).calledWith(
+            bob.address,
+            alice.address,
+            parseEther("20")
+          );
+        });
+      });
+
+      describe("when the exchange rate is 1.12 eur/usd and 0.998 usdc/usd", async () => {
+        beforeEach(async () => {
+          stdReference.getReferenceData.whenCalledWith("eur", "usd").returns({
+            rate: parseEther("1.12"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+          stdReference.getReferenceData.whenCalledWith("usdc", "usd").returns({
+            rate: parseEther("0.998"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+        });
+
+        it("should exchange the 10 DAO tokens for 11.22244488977956 USDC", async () => {
+          await internalMarket.connect(alice).makeOffer(parseEther("10"));
+
+          await internalMarket.matchOffer(
+            alice.address,
+            bob.address,
+            parseEther("10")
+          );
+          expect(token.transfer).calledWith(bob.address, parseEther("10"));
+          expect(usdc.transferFrom).calledWith(
+            bob.address,
+            alice.address,
+            parseEther("11.222444889779559118")
+          );
+        });
+
+        it("should exchange the 10 DAO token for 20 USDC", async () => {
+          await internalMarket.connect(alice).makeOffer(parseEther("10"));
+
+          await internalMarket.matchOffer(
+            alice.address,
+            bob.address,
+            parseEther("10")
+          );
+          expect(token.transfer).calledWith(bob.address, parseEther("10"));
+          expect(usdc.transferFrom).calledWith(
+            bob.address,
+            alice.address,
+            parseEther("20")
+          );
+        });
+      });
+
+      describe("when the exchange rate is 2/1", async () => {
+        beforeEach(async () => {
+          stdReference.getReferenceData.whenCalledWith("eur", "usd").returns({
+            rate: parseEther("1"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+          stdReference.getReferenceData.whenCalledWith("usdc", "usd").returns({
+            rate: parseEther("2"),
+            lastUpdatedBase: parseEther("0"),
+            lastUpdatedQuote: parseEther("0"),
+          });
+        });
+
+        it("should exchange the 10 DAO token sats for 5 USDC sats", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 10);
+          expect(token.transfer).calledWith(bob.address, 10);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 5);
+        });
+
+        it("should exchange the 11 DAO token sats for 5 USDC sats", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 11);
+          expect(token.transfer).calledWith(bob.address, 11);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 5);
+        });
+
+        it("should exchange the 11 DAO tokens for 5.5 USDC", async () => {
+          await internalMarket.connect(alice).makeOffer(parseEther("11"));
+
+          await internalMarket.matchOffer(
+            alice.address,
+            bob.address,
+            parseEther("11")
+          );
+          expect(token.transfer).calledWith(bob.address, parseEther("11"));
+          expect(usdc.transferFrom).calledWith(
+            bob.address,
+            alice.address,
+            parseEther("5.5")
+          );
+        });
+
+        it("should exchange the 1 DAO token sat for 0 USDC sats", async () => {
+          await internalMarket.matchOffer(alice.address, bob.address, 1);
+          expect(token.transfer).calledWith(bob.address, 1);
+          expect(usdc.transferFrom).calledWith(bob.address, alice.address, 0);
+        });
+      });
     });
 
     describe("matchOffer", async () => {
