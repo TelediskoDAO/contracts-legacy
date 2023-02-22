@@ -6,11 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 interface IRedemptionController {
-    function afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) external;
+    function afterMint(address to, uint256 amount) external;
 
     function afterOffer(address account, uint256 amount) external;
 

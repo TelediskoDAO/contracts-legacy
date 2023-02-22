@@ -75,7 +75,10 @@ contract TelediskoTokenBase is ERC20Upgradeable {
     ) internal virtual override {
         super._afterTokenTransfer(from, to, amount);
         _voting.afterTokenTransfer(from, to, amount);
-        _redemptionController.afterTokenTransfer(from, to, amount);
+
+        if (from == address(0)) {
+            _redemptionController.afterMint(to, amount);
+        }
 
         // Invariants
         require(

@@ -116,7 +116,7 @@ describe("TelediskoToken", () => {
 
   beforeEach(async () => {
     snapshotId = await network.provider.send("evm_snapshot");
-    redemption.afterTokenTransfer.reset();
+    redemption.afterMint.reset();
   });
 
   afterEach(async () => {
@@ -139,13 +139,18 @@ describe("TelediskoToken", () => {
         .withArgs(account.address, account2.address, 10);
     });
 
-    it("should call the RedemptionController hook after a transfer", async () => {
+    it("should call the RedemptionController hook when mint", async () => {
       await telediskoToken.mint(account.address, 10);
-      expect(redemption.afterTokenTransfer).calledWith(
-        AddressZero,
-        account.address,
-        10
-      );
+      expect(redemption.afterMint).calledWith(account.address, 10);
+    });
+
+    it("should not call the RedemptionController hook when transfer", async () => {
+      await telediskoToken.mint(account.address, 10);
+      redemption.afterMint.reset();
+
+      await telediskoToken.connect(account).transfer(account2.address, 10);
+
+      expect(redemption.afterMint).callCount(0);
     });
   });
 

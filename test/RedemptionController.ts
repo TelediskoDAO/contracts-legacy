@@ -60,12 +60,10 @@ describe("RedemptionController", () => {
     expect(result).equal(amount);
   }
 
-  describe("afterTokenTransfer", async () => {
+  describe("afterMint", async () => {
     it("should fail if not called by a TOKEN_MANAGER", async () => {
       await expect(
-        redemptionController
-          .connect(account)
-          .afterTokenTransfer(AddressZero, account.address, 32)
+        redemptionController.connect(account).afterMint(account.address, 32)
       ).revertedWith(
         `AccessControl: account ${account.address.toLowerCase()} is missing role ${TOKEN_MANAGER_ROLE}`
       );
@@ -106,11 +104,7 @@ describe("RedemptionController", () => {
     });
 
     it("returns 0 if the user did not offer any token", async () => {
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        10
-      );
+      await redemptionController.afterMint(account.address, 10);
 
       await expectBalance(0);
     });
@@ -137,11 +131,7 @@ describe("RedemptionController", () => {
 
     describe("when 10 tokens are minted", async () => {
       beforeEach(async () => {
-        await redemptionController.afterTokenTransfer(
-          AddressZero,
-          account.address,
-          10
-        );
+        await redemptionController.afterMint(account.address, 10);
       });
 
       describe("and no more tokens are minted", async () => {
@@ -276,11 +266,7 @@ describe("RedemptionController", () => {
         beforeEach(async () => {
           await timeTravel(30 * 3 - 1);
           await mineEVMBlock();
-          await redemptionController.afterTokenTransfer(
-            AddressZero,
-            account.address,
-            3
-          );
+          await redemptionController.afterMint(account.address, 3);
         });
 
         describe("and 11 tokens are offered and 60 days pass", async () => {
@@ -319,11 +305,7 @@ describe("RedemptionController", () => {
         beforeEach(async () => {
           await timeTravel(30 * 4);
           await mineEVMBlock();
-          await redemptionController.afterTokenTransfer(
-            AddressZero,
-            account.address,
-            3
-          );
+          await redemptionController.afterMint(account.address, 3);
         });
 
         describe("and 7 tokens are offered and 60 days pass", async () => {
@@ -390,11 +372,7 @@ describe("RedemptionController", () => {
   describe("complex scenarios", async () => {
     it("complex token movement #1", async () => {
       // Mint 500
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        500
-      );
+      await redemptionController.afterMint(account.address, 500);
       // Offer 500
       await redemptionController.afterOffer(account.address, 400);
       // After 60 days, redeems 300
@@ -426,11 +404,7 @@ describe("RedemptionController", () => {
 
     it("complex token movement #2", async () => {
       // Mint 500
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        500
-      );
+      await redemptionController.afterMint(account.address, 500);
 
       // Offer 500
       await redemptionController.afterOffer(account.address, 500);
@@ -464,11 +438,7 @@ describe("RedemptionController", () => {
       await mineEVMBlock();
 
       // Mint 500
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        500
-      );
+      await redemptionController.afterMint(account.address, 500);
 
       // Offer 800
       await redemptionController.afterOffer(account.address, 800);
@@ -482,40 +452,24 @@ describe("RedemptionController", () => {
 
     it("complex token movement #3", async () => {
       // Mint 100
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        100
-      );
+      await redemptionController.afterMint(account.address, 100);
       // 1 month
       await timeTravel(30);
 
       // Mint 100
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        100
-      );
+      await redemptionController.afterMint(account.address, 100);
       // 1 month
       await timeTravel(30);
 
       // Mint 100
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        100
-      );
+      await redemptionController.afterMint(account.address, 100);
       // 1 month
       await timeTravel(30);
 
       // Offer 300
       await redemptionController.afterOffer(account.address, 300);
       // Mint 100
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        100
-      );
+      await redemptionController.afterMint(account.address, 100);
 
       // 1 month
       await timeTravel(30);
@@ -552,40 +506,24 @@ describe("RedemptionController", () => {
 
     it("complex token movement #4", async () => {
       // Mint 100
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        100
-      );
+      await redemptionController.afterMint(account.address, 100);
       // 1 month
       await timeTravel(30);
 
       // Mint 100
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        100
-      );
+      await redemptionController.afterMint(account.address, 100);
       // 1 month
       await timeTravel(30);
 
       // Mint 100
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        100
-      );
+      await redemptionController.afterMint(account.address, 100);
       // 1 month
       await timeTravel(30);
 
       // Offer 300
       await redemptionController.afterOffer(account.address, 300);
       // Mint 100
-      await redemptionController.afterTokenTransfer(
-        AddressZero,
-        account.address,
-        100
-      );
+      await redemptionController.afterMint(account.address, 100);
 
       // 1 month
       await timeTravel(30);

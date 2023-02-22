@@ -59,17 +59,13 @@ contract RedemptionController is
     mapping(address => MintBudget[]) internal _mintBudgets;
     mapping(address => uint256) internal _mintBudgetsStartIndex;
 
-    function afterTokenTransfer(
-        address from,
+    function afterMint(
         address to,
         uint256 amount
     ) external onlyRole(TOKEN_MANAGER_ROLE) {
-        // If it's a mint then add it to the mint budget for that address
         // FIXME: should we check if the user is a contributor? Worst case we end up having
         // minting entries that will never be used.
-        if (from == address(0)) {
-            _mintBudgets[to].push(MintBudget(block.timestamp, amount));
-        }
+        _mintBudgets[to].push(MintBudget(block.timestamp, amount));
     }
 
     function _addRedeemable(
