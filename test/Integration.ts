@@ -8,6 +8,8 @@ import {
   TelediskoToken,
   ResolutionManager,
   InternalMarket,
+  RedemptionController,
+  TokenMock,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
@@ -31,23 +33,30 @@ describe("Integration", async () => {
   let resolution: ResolutionManager;
   let registry: ShareholderRegistry;
   let market: InternalMarket;
+  let redemption: RedemptionController;
+  let usdc: TokenMock;
   let contributorStatus: string;
   let investorStatus: string;
-  let deployer: SignerWithAddress,
-    managingBoard: SignerWithAddress,
-    user1: SignerWithAddress,
-    user2: SignerWithAddress,
-    user3: SignerWithAddress;
+  let deployer: SignerWithAddress;
+  let managingBoard: SignerWithAddress;
+  let user1: SignerWithAddress;
+  let user2: SignerWithAddress;
+  let user3: SignerWithAddress;
 
   before(async () => {
     [deployer, managingBoard, user1, user2, user3] = await ethers.getSigners();
-    ({ voting, token, registry, resolution, market } = await deployDAO(
-      deployer,
-      managingBoard
-    ));
+    ({ voting, token, registry, resolution, market, redemption, usdc } =
+      await deployDAO(deployer, managingBoard));
 
     contributorStatus = await registry.CONTRIBUTOR_STATUS();
     investorStatus = await registry.INVESTOR_STATUS();
+
+    await usdc.mint(user1.address, 1000);
+    await usdc.connect(user1).approve(market.address, 1000);
+    await usdc.mint(user2.address, 1000);
+    await usdc.connect(user2).approve(market.address, 1000);
+    await usdc.mint(user3.address, 1000);
+    await usdc.connect(user3).approve(market.address, 1000);
   });
 
   beforeEach(async () => {
@@ -449,7 +458,7 @@ describe("Integration", async () => {
       ).revertedWith("TelediskoToken: contributor cannot transfer");
 
       await market.connect(user2).makeOffer(2);
-      await market.matchOffer(user2.address, user1.address, 1);
+      await market.connect(user1).matchOffer(user2.address, 1);
 
       const resolutionId2 = await _prepareResolution(6);
       await _makeVotable(resolutionId2);
@@ -499,7 +508,7 @@ describe("Integration", async () => {
       expect(await voting.getVotingPower(user2.address)).equal(51);
 
       await market.connect(user2).makeOffer(2);
-      await market.matchOffer(user2.address, user1.address, 1);
+      await market.connect(user1).matchOffer(user2.address, 1);
 
       const resolutionId2 = await _prepareResolution(6);
       await _makeVotable(resolutionId2);
@@ -542,11 +551,11 @@ describe("Integration", async () => {
       await _makeContributor(user3, 1);
 
       await market.connect(user2).makeOffer(60);
-      await market.matchOffer(user2.address, user3.address, 10);
-      await market.matchOffer(user2.address, user1.address, 40);
+      await market.connect(user3).matchOffer(user2.address, 10);
+      await market.connect(user1).matchOffer(user2.address, 40);
       await market.connect(user3).makeOffer(5);
       await market.connect(user1).makeOffer(10);
-      await market.matchOffer(user1.address, user2.address, 10);
+      await market.connect(user2).matchOffer(user1.address, 10);
 
       // Two days pass
       let offerExpires = (await getEVMTimestamp()) + 2 * DAY;
@@ -554,7 +563,7 @@ describe("Integration", async () => {
       await mineEVMBlock();
 
       await market.connect(user2).makeOffer(10);
-      await market.matchOffer(user2.address, user3.address, 15);
+      await market.connect(user3).matchOffer(user2.address, 15);
 
       await expect(
         market.connect(user3).withdraw(user1.address, 10)
@@ -660,6 +669,16 @@ describe("Integration", async () => {
       expect(result.noticePeriod).equal(3);
       expect(result.votingPeriod).equal(6);
       expect(result.canBeNegative).equal(false);
+    });
+
+    it.skip("Match offers", async () => {
+      // Create three contributors
+      await _makeContributor(user1, 50);
+      await _makeContributor(user2, 100);
+      await _makeContributor(user3, 1);
+
+      await market.connect(user1).makeOffer(10);
+      await market.connect(user2).matchOffer(user1.address, 4);
     });
   });
 });

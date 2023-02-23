@@ -27,7 +27,7 @@ const WEEK = DAY * 7;
 describe("InternalMarket", async () => {
   let snapshotId: string;
 
-  let RESOLUTION_ROLE: string, ESCROW_ROLE: string;
+  let RESOLUTION_ROLE: string;
   let token: FakeContract<IERC20>;
   let internalMarket: InternalMarket;
   let redemption: FakeContract<IRedemptionController>;
@@ -57,9 +57,6 @@ describe("InternalMarket", async () => {
 
     RESOLUTION_ROLE = await roles.RESOLUTION_ROLE();
     await internalMarket.grantRole(RESOLUTION_ROLE, deployer.address);
-
-    ESCROW_ROLE = await roles.ESCROW_ROLE();
-    await internalMarket.grantRole(ESCROW_ROLE, deployer.address);
 
     offerDuration = (await internalMarket.offerDuration()).toNumber();
 
@@ -487,18 +484,8 @@ describe("InternalMarket", async () => {
         await internalMarket.connect(alice).makeOffer(35);
       });
 
-      it("should revert when called by a non ESCROW_ROLE", async () => {
-        await expect(
-          internalMarket
-            .connect(alice)
-            .matchOffer(alice.address, bob.address, 11)
-        ).revertedWith(
-          `AccessControl: account ${alice.address.toLowerCase()} is missing role ${ESCROW_ROLE}`
-        );
-      });
-
       it("should match the oldest active offer", async () => {
-        await expect(internalMarket.matchOffer(alice.address, bob.address, 11))
+        await expect(internalMarket.connect(bob).matchOffer(alice.address, 11))
           .emit(internalMarket, "OfferMatched")
           .withArgs(0, alice.address, bob.address, 11);
         expect(token.transfer).calledWith(bob.address, 11);
@@ -507,7 +494,7 @@ describe("InternalMarket", async () => {
       it("should match the oldest active offer and ignore the expired ones", async () => {
         // Make offer `11` expire
         await setEVMTimestamp(ts + WEEK + DAY);
-        await expect(internalMarket.matchOffer(alice.address, bob.address, 25))
+        await expect(internalMarket.connect(bob).matchOffer(alice.address, 25))
           .emit(internalMarket, "OfferMatched")
           .withArgs(1, alice.address, bob.address, 25);
         expect(token.transfer).calledWith(bob.address, 25);
@@ -515,7 +502,7 @@ describe("InternalMarket", async () => {
 
       it("should match multiple active offers from the old one to the new one", async () => {
         await expect(
-          internalMarket.matchOffer(alice.address, bob.address, 11 + 25 + 1)
+          internalMarket.connect(bob).matchOffer(alice.address, 11 + 25 + 1)
         )
           .emit(internalMarket, "OfferMatched")
           .withArgs(0, alice.address, bob.address, 11)
@@ -527,7 +514,7 @@ describe("InternalMarket", async () => {
 
       it("should not allow to match more than what's available", async () => {
         await expect(
-          internalMarket.matchOffer(alice.address, bob.address, 11 + 25 + 36)
+          internalMarket.connect(bob).matchOffer(alice.address, 11 + 25 + 36)
         ).revertedWith("InternalMarket: amount exceeds offer");
       });
 
@@ -535,7 +522,7 @@ describe("InternalMarket", async () => {
         // Make offer `11` and `15` expire
         await setEVMTimestamp(ts + WEEK + DAY * 3);
         await expect(
-          internalMarket.matchOffer(alice.address, bob.address, 36)
+          internalMarket.connect(bob).matchOffer(alice.address, 36)
         ).revertedWith("InternalMarket: amount exceeds offer");
       });
 
@@ -554,7 +541,7 @@ describe("InternalMarket", async () => {
         });
 
         it("should exchange the 10 DAO tokens for 10 USDC", async () => {
-          await internalMarket.matchOffer(alice.address, bob.address, 10);
+          await internalMarket.connect(bob).matchOffer(alice.address, 10);
           expect(token.transfer).calledWith(bob.address, 10);
           expect(usdc.transferFrom).calledWith(bob.address, alice.address, 10);
         });
@@ -575,7 +562,7 @@ describe("InternalMarket", async () => {
         });
 
         it("should exchange the 10 DAO tokens sats for 20 USDC sats", async () => {
-          await internalMarket.matchOffer(alice.address, bob.address, 10);
+          await internalMarket.connect(bob).matchOffer(alice.address, 10);
           expect(token.transfer).calledWith(bob.address, 10);
           expect(usdc.transferFrom).calledWith(bob.address, alice.address, 20);
         });
@@ -583,11 +570,9 @@ describe("InternalMarket", async () => {
         it("should exchange the 10 DAO token for 20 USDC", async () => {
           await internalMarket.connect(alice).makeOffer(parseEther("10"));
 
-          await internalMarket.matchOffer(
-            alice.address,
-            bob.address,
-            parseEther("10")
-          );
+          await internalMarket
+            .connect(bob)
+            .matchOffer(alice.address, parseEther("10"));
           expect(token.transfer).calledWith(bob.address, parseEther("10"));
           expect(usdc.transferFrom).calledWith(
             bob.address,
@@ -614,11 +599,9 @@ describe("InternalMarket", async () => {
         it("should exchange the 10 DAO tokens for 11.22244488977956 USDC", async () => {
           await internalMarket.connect(alice).makeOffer(parseEther("10"));
 
-          await internalMarket.matchOffer(
-            alice.address,
-            bob.address,
-            parseEther("10")
-          );
+          await internalMarket
+            .connect(bob)
+            .matchOffer(alice.address, parseEther("10"));
           expect(token.transfer).calledWith(bob.address, parseEther("10"));
           expect(usdc.transferFrom).calledWith(
             bob.address,
@@ -643,13 +626,13 @@ describe("InternalMarket", async () => {
         });
 
         it("should exchange the 10 DAO token sats for 5 USDC sats", async () => {
-          await internalMarket.matchOffer(alice.address, bob.address, 10);
+          await internalMarket.connect(bob).matchOffer(alice.address, 10);
           expect(token.transfer).calledWith(bob.address, 10);
           expect(usdc.transferFrom).calledWith(bob.address, alice.address, 5);
         });
 
         it("should exchange the 11 DAO token sats for 5 USDC sats", async () => {
-          await internalMarket.matchOffer(alice.address, bob.address, 11);
+          await internalMarket.connect(bob).matchOffer(alice.address, 11);
           expect(token.transfer).calledWith(bob.address, 11);
           expect(usdc.transferFrom).calledWith(bob.address, alice.address, 5);
         });
@@ -657,11 +640,9 @@ describe("InternalMarket", async () => {
         it("should exchange the 11 DAO tokens for 5.5 USDC", async () => {
           await internalMarket.connect(alice).makeOffer(parseEther("11"));
 
-          await internalMarket.matchOffer(
-            alice.address,
-            bob.address,
-            parseEther("11")
-          );
+          await internalMarket
+            .connect(bob)
+            .matchOffer(alice.address, parseEther("11"));
           expect(token.transfer).calledWith(bob.address, parseEther("11"));
           expect(usdc.transferFrom).calledWith(
             bob.address,
@@ -671,7 +652,7 @@ describe("InternalMarket", async () => {
         });
 
         it("should exchange the 1 DAO token sat for 0 USDC sats", async () => {
-          await internalMarket.matchOffer(alice.address, bob.address, 1);
+          await internalMarket.connect(bob).matchOffer(alice.address, 1);
           expect(token.transfer).calledWith(bob.address, 1);
           expect(usdc.transferFrom).calledWith(bob.address, alice.address, 0);
         });
@@ -760,7 +741,7 @@ describe("InternalMarket", async () => {
 
       it("should not allow to withdraw if an offer has been matched", async () => {
         // Bob matches Alice's offer
-        await internalMarket.matchOffer(alice.address, bob.address, 11);
+        await internalMarket.connect(bob).matchOffer(alice.address, 11);
         // Alice's offer expires
         await setEVMTimestamp(ts + WEEK + DAY);
         await expect(
@@ -770,7 +751,7 @@ describe("InternalMarket", async () => {
 
       it("should allow to withdraw a portion of the offered tokens including an expired offer", async () => {
         // Bob matches Alice's offer
-        await internalMarket.matchOffer(alice.address, bob.address, 5);
+        await internalMarket.connect(bob).matchOffer(alice.address, 5);
         // Alice's offer expires
         await setEVMTimestamp(ts + WEEK + DAY);
         await internalMarket.connect(alice).withdraw(carol.address, 6);
@@ -779,7 +760,7 @@ describe("InternalMarket", async () => {
 
       it("should allow to withdraw a portion of the offered tokens including expired offers", async () => {
         // Bob matches Alice's offer
-        await internalMarket.matchOffer(alice.address, bob.address, 5);
+        await internalMarket.connect(bob).matchOffer(alice.address, 5);
         // Alice's first two offers expire
         await setEVMTimestamp(ts + WEEK + DAY * 3);
         // Alice can withdraw 6 + 25 tokens

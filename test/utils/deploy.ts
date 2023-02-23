@@ -1,9 +1,7 @@
-import { FakeContract, smock } from "@defi-wonderland/smock";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { parseEther } from "ethers/lib/utils";
 import { ethers, upgrades } from "hardhat";
 import {
-  IERC20,
   InternalMarket,
   InternalMarket__factory,
   PriceOracle,
@@ -12,6 +10,8 @@ import {
   RedemptionController__factory,
   ShareholderRegistry,
   TelediskoToken,
+  TokenMock,
+  TokenMock__factory,
   Voting,
 } from "../../typechain";
 import { ResolutionManager } from "../../typechain";
@@ -29,7 +29,7 @@ export async function deployDAO(
 ) {
   let voting: Voting;
   let token: TelediskoToken;
-  let usdc: FakeContract<IERC20>;
+  let usdc: TokenMock;
   let registry: ShareholderRegistry;
   let resolution: ResolutionManager;
   let market: InternalMarket;
@@ -74,6 +74,11 @@ export async function deployDAO(
     deployer
   )) as PriceOracle__factory;
 
+  const TokenMockFactory = (await ethers.getContractFactory(
+    "TokenMock",
+    deployer
+  )) as TokenMock__factory;
+
   // Deploy and initialize contacts
   ///////////////////////////////////
 
@@ -89,7 +94,8 @@ export async function deployDAO(
   )) as TelediskoToken;
   await token.deployed();
 
-  usdc = await smock.fake("IERC20");
+  usdc = await TokenMockFactory.deploy();
+  await usdc.deployed();
 
   oracle = await PriceOracleFactory.deploy();
   await oracle.deployed();
@@ -129,7 +135,6 @@ export async function deployDAO(
   const operatorRole = await roles.OPERATOR_ROLE();
   const resolutionRole = await roles.RESOLUTION_ROLE();
   const shareholderRegistryRole = await roles.SHAREHOLDER_REGISTRY_ROLE();
-  const escrowRole = await roles.ESCROW_ROLE();
   const tokenManagerRole = await roles.TOKEN_MANAGER_ROLE();
 
   await registry.grantRole(operatorRole, deployer.address);
@@ -142,7 +147,6 @@ export async function deployDAO(
   await token.grantRole(operatorRole, deployer.address);
   await token.grantRole(resolutionRole, deployer.address);
 
-  await market.grantRole(escrowRole, deployer.address);
   await market.grantRole(resolutionRole, deployer.address);
 
   await voting.setShareholderRegistry(registry.address);
@@ -175,5 +179,5 @@ export async function deployDAO(
   // FIXME
   await market.setReserve(deployer.address);
 
-  return { voting, token, registry, resolution, market, redemption };
+  return { voting, token, registry, resolution, market, redemption, usdc };
 }

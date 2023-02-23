@@ -19,12 +19,8 @@ contract InternalMarket is InternalMarketBase, AccessControl {
         _makeOffer(_msgSender(), amount);
     }
 
-    function matchOffer(
-        address from,
-        address to,
-        uint amount
-    ) public onlyRole(Roles.ESCROW_ROLE) {
-        _matchOffer(from, to, amount);
+    function matchOffer(address account, uint amount) public {
+        _matchOffer(account, _msgSender(), amount);
     }
 
     function withdraw(address to, uint amount) public {
