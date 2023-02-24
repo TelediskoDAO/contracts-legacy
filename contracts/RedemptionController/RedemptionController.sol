@@ -238,6 +238,29 @@ contract RedemptionController is
         );
     }
 
+    function afterMatch(
+        address account,
+        uint256 amount
+    ) external onlyRole(TOKEN_MANAGER_ROLE) {
+        Redeemable[] storage redeemables = _redeemables[account];
+
+        for (uint256 i = 0; i < redeemables.length && amount > 0; i++) {
+            Redeemable storage redeemable = redeemables[i];
+            if (amount < redeemable.amount) {
+                redeemable.amount -= amount;
+                amount = 0;
+            } else {
+                amount -= redeemable.amount;
+                redeemable.amount = 0;
+            }
+        }
+
+        require(
+            amount == 0,
+            "Redemption controller: amount exceeds redeemable balance"
+        );
+    }
+
     function redeemableBalance(
         address account
     ) external view returns (uint256 redeemableAmount) {

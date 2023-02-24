@@ -696,7 +696,7 @@ describe("Integration", async () => {
       expect(result.canBeNegative).equal(false);
     });
 
-    it.only("Match offer, move to external wallet, redeem when ready", async () => {
+    it("Match offer, move to external wallet, redeem when ready", async () => {
       // Create three contributors
       await _makeContributor(user1, 50);
       await _makeContributor(user2, 100);
@@ -722,10 +722,8 @@ describe("Integration", async () => {
       // Make the tokens redeemable
       await timeTravel(53, true);
 
-      // FIXME: redeemable balance should be 4 (10 - 2 - 4), but it's 10 🤔
-      console.log(await redemption.redeemableBalance(user1.address));
-      // should output 4
-      console.log(await market.withdrawableBalanceOf(user1.address));
+      expect(await redemption.redeemableBalance(user1.address)).equal(4);
+      expect(await market.withdrawableBalanceOf(user1.address)).equal(0);
 
       const user1TokenBalance = token.balanceOf(user1.address);
       const user1UsdcBalance = usdc.balanceOf(user1.address);
@@ -741,11 +739,9 @@ describe("Integration", async () => {
       // Chaining two changeTokenBalances seems to execute the "redeem"
       // function twice. Anyway, this second redeem should fail.
 
-      /*
-      await expect(() =>
-        market.connect(user1).redeem(4)
-      ).to.changeTokenBalances(usdc, [reserve, user1], [-4, 4]);
-      */
+      await expect(market.connect(user1).redeem(4)).revertedWith(
+        "Redemption controller: amount exceeds redeemable balance"
+      );
     });
   });
 });

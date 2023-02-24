@@ -163,9 +163,23 @@ contract InternalMarketBase {
         _beforeMatchOffer(from, to, amount);
         daoToken.transfer(to, amount);
         exchangeToken.transferFrom(to, from, _convertToUSDC(amount));
+        redemptionController.afterMatch(from, amount);
     }
 
     function _redeem(address from, uint256 amount) internal virtual {
+        uint256 withdrawableBalance = withdrawableBalanceOf(from);
+        if (withdrawableBalance < amount) {
+            uint256 difference = amount - withdrawableBalance;
+            daoToken.transferFrom(from, reserve, difference);
+            _withdraw(from, reserve, withdrawableBalance);
+        } else {
+            _withdraw(from, reserve, amount);
+        }
+
+        exchangeToken.transferFrom(reserve, from, _convertToUSDC(amount));
+        redemptionController.afterRedeem(from, amount);
+
+        /*
         uint256 withdrawableBalance = withdrawableBalanceOf(from);
         require(
             withdrawableBalance > 0,
@@ -174,6 +188,7 @@ contract InternalMarketBase {
         _withdraw(from, reserve, amount);
         exchangeToken.transferFrom(reserve, from, _convertToUSDC(amount));
         redemptionController.afterRedeem(from, amount);
+        */
     }
 
     function _convertToUSDC(uint256 eurAmount) internal view returns (uint256) {
