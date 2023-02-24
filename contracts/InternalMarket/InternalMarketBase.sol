@@ -167,14 +167,11 @@ contract InternalMarketBase {
 
     function _redeem(address from, uint256 amount) internal virtual {
         uint256 withdrawableBalance = withdrawableBalanceOf(from);
-        if (withdrawableBalance < amount) {
-            uint256 difference = amount - withdrawableBalance;
-            daoToken.transferFrom(from, reserve, difference);
-            _withdraw(from, reserve, withdrawableBalance);
-        } else {
-            _withdraw(from, reserve, amount);
-        }
-
+        require(
+            withdrawableBalance > 0,
+            "InternalMarket: insufficient balance"
+        );
+        _withdraw(from, reserve, amount);
         exchangeToken.transferFrom(reserve, from, _convertToUSDC(amount));
         redemptionController.afterRedeem(from, amount);
     }

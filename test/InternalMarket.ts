@@ -408,7 +408,13 @@ describe("InternalMarket", async () => {
             );
           });
 
-          describe("when the user redeems 60 tokens", async () => {
+          it("should fail when the user redeems 60 tokens", async () => {
+            await expect(internalMarket.connect(alice).redeem(60)).revertedWith(
+              ""
+            );
+          });
+
+          /*describe("when the user redeems 60 tokens", async () => {
             beforeEach(async () => {
               await internalMarket.connect(alice).redeem(60);
             });
@@ -432,7 +438,7 @@ describe("InternalMarket", async () => {
                 60
               );
             });
-          });
+          });*/
 
           describe("when the user redeems 50 tokens", async () => {
             beforeEach(async () => {
