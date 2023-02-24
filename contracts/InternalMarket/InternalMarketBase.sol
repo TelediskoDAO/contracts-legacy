@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../RedemptionController/IRedemptionController.sol";
 import "../PriceOracle/IStdReference.sol";
-import "hardhat/console.sol";
 
 contract InternalMarketBase {
     struct Offer {
@@ -95,7 +94,8 @@ contract InternalMarketBase {
             Offer storage offer = offers.offer[i];
 
             if (block.timestamp > offer.expiredAt) {
-                if (amount > offer.amount) {
+                // FIXME it was > not >=
+                if (amount >= offer.amount) {
                     amount -= offer.amount;
                     _vaultContributors[from] -= offer.amount;
                     delete offers.offer[offers.start++];

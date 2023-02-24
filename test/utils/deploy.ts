@@ -25,7 +25,8 @@ import { roles } from "./roles";
 
 export async function deployDAO(
   deployer: SignerWithAddress,
-  managingBoard: SignerWithAddress
+  managingBoard: SignerWithAddress,
+  reserve: SignerWithAddress
 ) {
   let voting: Voting;
   let token: TelediskoToken;
@@ -177,7 +178,15 @@ export async function deployDAO(
   await market.setRedemptionController(redemption.address);
   await market.setExchangePair(usdc.address, oracle.address);
   // FIXME
-  await market.setReserve(deployer.address);
+  await market.setReserve(reserve.address);
 
-  return { voting, token, registry, resolution, market, redemption, usdc };
+  return {
+    voting,
+    token,
+    registry,
+    resolution,
+    market,
+    redemption,
+    usdc,
+  };
 }

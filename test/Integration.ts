@@ -12,12 +12,18 @@ import {
   TokenMock,
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { setEVMTimestamp, getEVMTimestamp, mineEVMBlock } from "./utils/evm";
+import {
+  setEVMTimestamp,
+  getEVMTimestamp,
+  mineEVMBlock,
+  timeTravel,
+} from "./utils/evm";
 import { roles } from "./utils/roles";
 import { deployDAO } from "./utils/deploy";
 import { parseEther } from "ethers/lib/utils";
 
 import { BigNumber, BytesLike } from "ethers";
+import { redemptionController } from "../typechain/contracts";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
@@ -27,6 +33,7 @@ const DAY = 60 * 60 * 24;
 
 describe("Integration", async () => {
   let snapshotId: string;
+  let offerDurationDays: number;
 
   let voting: Voting;
   let token: TelediskoToken;
@@ -39,18 +46,36 @@ describe("Integration", async () => {
   let investorStatus: string;
   let deployer: SignerWithAddress;
   let managingBoard: SignerWithAddress;
+  let reserve: SignerWithAddress;
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
   let user3: SignerWithAddress;
+  let free1: SignerWithAddress;
+  let free2: SignerWithAddress;
+  let free3: SignerWithAddress;
 
   before(async () => {
-    [deployer, managingBoard, user1, user2, user3] = await ethers.getSigners();
+    [
+      deployer,
+      managingBoard,
+      reserve,
+      user1,
+      user2,
+      user3,
+      free1,
+      free2,
+      free3,
+    ] = await ethers.getSigners();
     ({ voting, token, registry, resolution, market, redemption, usdc } =
-      await deployDAO(deployer, managingBoard));
+      await deployDAO(deployer, managingBoard, reserve));
 
     contributorStatus = await registry.CONTRIBUTOR_STATUS();
     investorStatus = await registry.INVESTOR_STATUS();
 
+    offerDurationDays = (await market.offerDuration()).toNumber() / DAY;
+
+    await usdc.mint(reserve.address, 1000);
+    await usdc.connect(reserve).approve(market.address, 1000);
     await usdc.mint(user1.address, 1000);
     await usdc.connect(user1).approve(market.address, 1000);
     await usdc.mint(user2.address, 1000);
@@ -671,14 +696,52 @@ describe("Integration", async () => {
       expect(result.canBeNegative).equal(false);
     });
 
-    it.skip("Match offers", async () => {
+    it.only("Match offer, move to external wallet, redeem when ready", async () => {
       // Create three contributors
       await _makeContributor(user1, 50);
       await _makeContributor(user2, 100);
       await _makeContributor(user3, 1);
 
       await market.connect(user1).makeOffer(10);
-      await market.connect(user2).matchOffer(user1.address, 4);
+
+      await expect(() =>
+        market.connect(user2).matchOffer(user1.address, 4)
+      ).to.changeTokenBalances(usdc, [user1, user2], [4, -4]);
+
+      await expect(() =>
+        market.connect(user3).matchOffer(user1.address, 2)
+      ).to.changeTokenBalances(usdc, [user1, user3], [2, -2]);
+
+      // Let the offer expire, the rest of the tokens are free to transfer
+      await timeTravel(offerDurationDays + 1);
+
+      await expect(() =>
+        market.connect(user1).withdraw(free1.address, 4)
+      ).to.changeTokenBalances(token, [market, free1], [-4, 4]);
+
+      // Make the tokens redeemable
+      await timeTravel(53, true);
+
+      // FIXME: redeemable balance should be 4 (10 - 2 - 4), but it's 10 🤔
+      console.log(await redemption.redeemableBalance(user1.address));
+
+      const user1TokenBalance = token.balanceOf(user1.address);
+      const user1UsdcBalance = usdc.balanceOf(user1.address);
+      const reserveTokenBalance = token.balanceOf(reserve.address);
+      const reserveUsdcBalance = usdc.balanceOf(reserve.address);
+
+      // Note: user1 withdrew 4 tokens from the market. When user1 redeems their
+      // tokens the market transfers them from user1 to the reserve.
+      await expect(() =>
+        market.connect(user1).redeem(4)
+      ).to.changeTokenBalances(token, [user1, reserve], [-4, 4]);
+
+      // Chaining two changeTokenBalances seems to execute the "redeem"
+      // function twice.
+
+      await expect(() =>
+        market.connect(user1).redeem(4)
+      ).to.changeTokenBalances(usdc, [reserve, user1], [-4, 4]);
     });
   });
 });
