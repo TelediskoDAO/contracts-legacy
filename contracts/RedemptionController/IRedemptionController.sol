@@ -12,8 +12,6 @@ interface IRedemptionController {
 
     function afterRedeem(address account, uint256 amount) external;
 
-    function afterMatch(address account, uint256 amount) external;
-
     function redeemableBalance(
         address account
     ) external view returns (uint256 redeemableAmount);

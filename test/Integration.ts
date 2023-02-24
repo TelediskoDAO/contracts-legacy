@@ -23,13 +23,13 @@ import { deployDAO } from "./utils/deploy";
 import { parseEther } from "ethers/lib/utils";
 
 import { BigNumber, BytesLike } from "ethers";
-import { redemptionController } from "../typechain/contracts";
 
 chai.use(solidity);
 chai.use(chaiAsPromised);
 const { expect } = chai;
 
 const DAY = 60 * 60 * 24;
+const INITIAL_USDC = 1000;
 
 describe("Integration", async () => {
   let snapshotId: string;
@@ -74,14 +74,14 @@ describe("Integration", async () => {
 
     offerDurationDays = (await market.offerDuration()).toNumber() / DAY;
 
-    await usdc.mint(reserve.address, 1000);
-    await usdc.connect(reserve).approve(market.address, 1000);
-    await usdc.mint(user1.address, 1000);
-    await usdc.connect(user1).approve(market.address, 1000);
-    await usdc.mint(user2.address, 1000);
-    await usdc.connect(user2).approve(market.address, 1000);
-    await usdc.mint(user3.address, 1000);
-    await usdc.connect(user3).approve(market.address, 1000);
+    await usdc.mint(reserve.address, INITIAL_USDC);
+    await usdc.connect(reserve).approve(market.address, INITIAL_USDC);
+    await usdc.mint(user1.address, INITIAL_USDC);
+    await usdc.connect(user1).approve(market.address, INITIAL_USDC);
+    await usdc.mint(user2.address, INITIAL_USDC);
+    await usdc.connect(user2).approve(market.address, INITIAL_USDC);
+    await usdc.mint(user3.address, INITIAL_USDC);
+    await usdc.connect(user3).approve(market.address, INITIAL_USDC);
   });
 
   beforeEach(async () => {
@@ -712,35 +712,31 @@ describe("Integration", async () => {
         market.connect(user3).matchOffer(user1.address, 2)
       ).to.changeTokenBalances(usdc, [user1, user3], [2, -2]);
 
-      // Let the offer expire, the rest of the tokens are free to transfer
-      await timeTravel(offerDurationDays + 1);
-
-      await expect(() =>
-        market.connect(user1).withdraw(free1.address, 4)
-      ).to.changeTokenBalances(token, [market, free1], [-4, 4]);
-
       // Make the tokens redeemable
-      await timeTravel(53, true);
+      await timeTravel(60, true);
 
-      expect(await redemption.redeemableBalance(user1.address)).equal(4);
-      expect(await market.withdrawableBalanceOf(user1.address)).equal(0);
-
-      const user1TokenBalance = token.balanceOf(user1.address);
-      const user1UsdcBalance = usdc.balanceOf(user1.address);
-      const reserveTokenBalance = token.balanceOf(reserve.address);
-      const reserveUsdcBalance = usdc.balanceOf(reserve.address);
+      expect(await redemption.redeemableBalance(user1.address)).equal(10);
+      expect(await market.withdrawableBalanceOf(user1.address)).equal(4);
 
       // Note: user1 withdrew 4 tokens from the market. When user1 redeems their
       // tokens the market transfers them from user1 to the reserve.
-      await expect(() =>
-        market.connect(user1).redeem(4)
-      ).to.changeTokenBalances(token, [user1, reserve], [-4, 4]);
-
+      await market.connect(user1).redeem(4);
       // Chaining two changeTokenBalances seems to execute the "redeem"
       // function twice. Anyway, this second redeem should fail.
+      /*
+        .to.changeTokenBalances(token, [market, reserve], [-4, 4])
+        .to.changeTokenBalances(usdc, [reserve, user1], [-4, 4]);
+      */
+
+      expect(await token.balanceOf(user1.address)).equal(50 - 10);
+      expect(await usdc.balanceOf(user1.address)).equal(INITIAL_USDC + 10);
+      expect(await token.balanceOf(reserve.address)).equal(4);
+      expect(await usdc.balanceOf(reserve.address)).equal(INITIAL_USDC - 4);
+      expect(await token.balanceOf(market.address)).equal(10 - 4 - 2 - 4);
+      expect(await usdc.balanceOf(market.address)).equal(0);
 
       await expect(market.connect(user1).redeem(4)).revertedWith(
-        "Redemption controller: amount exceeds redeemable balance"
+        "InternalMarket: insufficient balance"
       );
     });
   });
