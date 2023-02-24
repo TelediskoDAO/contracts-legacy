@@ -109,7 +109,9 @@ export async function deployDAO(
   })) as RedemptionController;
   await redemption.deployed();
 
-  market = await InternalMarketFactory.deploy(token.address);
+  market = (await upgrades.deployProxy(InternalMarketFactory, [
+    token.address,
+  ])) as InternalMarket;
   await market.deployed();
 
   registry = (await upgrades.deployProxy(
