@@ -34,11 +34,19 @@ contract InternalMarketBase {
     IStdReference public priceOracle;
 
     address public reserve;
-    uint256 public offerDuration = 7 days;
+    uint256 public offerDuration;
 
     mapping(address => Offers) internal _offers;
 
     mapping(address => uint256) internal _vaultContributors;
+
+    function _initialize(
+        IERC20 _daoToken,
+        uint256 _offerDuration
+    ) internal virtual {
+        daoToken = _daoToken;
+        offerDuration = _offerDuration;
+    }
 
     function _enqueue(
         Offers storage offers,

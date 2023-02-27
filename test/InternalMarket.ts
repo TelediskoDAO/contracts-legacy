@@ -1,4 +1,4 @@
-import { ethers, network } from "hardhat";
+import { ethers, network, upgrades } from "hardhat";
 import { FakeContract, smock } from "@defi-wonderland/smock";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
@@ -50,7 +50,10 @@ describe("InternalMarket", async () => {
       "InternalMarket",
       deployer
     )) as InternalMarket__factory;
-    internalMarket = await InternalMarketFactory.deploy(token.address);
+
+    internalMarket = (await upgrades.deployProxy(InternalMarketFactory, [
+      token.address,
+    ])) as InternalMarket;
 
     redemption = await smock.fake("IRedemptionController");
     stdReference = await smock.fake("IStdReference");
