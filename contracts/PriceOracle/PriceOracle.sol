@@ -17,6 +17,7 @@ contract PriceOracle is IStdReference, AccessControl {
 
     constructor() {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        // TODO: leave this out
         _setupRole(RELAYER_ROLE, msg.sender);
     }
 
