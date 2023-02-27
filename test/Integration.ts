@@ -786,6 +786,7 @@ describe("Integration", async () => {
       expect(await usdc.balanceOf(reserve.address)).equal(INITIAL_USDC);
 
       let daysSinceMinting = 0;
+      let tokensRedeemed = 0;
 
       // user1 offers 10 tokens
       await market.connect(user1).makeOffer(10);
@@ -805,6 +806,7 @@ describe("Integration", async () => {
       await timeTravel(redemptionStartDays - offerDurationDays, true);
       daysSinceMinting += redemptionStartDays - offerDurationDays;
       await market.connect(user1).redeem(3);
+      tokensRedeemed += 3;
 
       // at the end of the redemption window, redemption of the 7 remaining tokens fails
       await timeTravel(redemptionWindowDays, true);
@@ -820,6 +822,7 @@ describe("Integration", async () => {
       await timeTravel(redemptionStartDays, true);
       daysSinceMinting += redemptionStartDays;
       await market.connect(user1).redeem(4);
+      tokensRedeemed += 4;
 
       // redemption window expires
       await timeTravel(redemptionWindowDays, true);
@@ -841,16 +844,35 @@ describe("Integration", async () => {
       // user1 re-withdraws the tokens, sobbing
       await market.connect(user1).withdraw(user1.address, 3);
 
+      // 13 tokens are minted to user1
+      await _mintTokens(user1, 13);
+      // 3 months pass
+      await timeTravel(redemptionActivityWindow, true);
+      // 1 token is minted to user1
+      await _mintTokens(user1, 1);
+      // 14 tokens are offered
+      await market.connect(user1).makeOffer(14);
+      // 60 days later, 1 token is redeemable
+      await timeTravel(redemptionStartDays, true);
+      expect(await redemption.redeemableBalance(user1.address)).equal(1);
+
+      // user1 redeems their only token and withdraws the others, sobbing again
+      await market.connect(user1).redeem(1);
+      tokensRedeemed += 1;
+      await market.connect(user1).withdraw(user1.address, 13);
+
       // post-conditions
-      expect(await token.balanceOf(user1.address)).equal(3);
+      expect(await token.balanceOf(user1.address)).equal(24 - tokensRedeemed);
       expect(await token.balanceOf(user2.address)).equal(0);
-      expect(await token.balanceOf(reserve.address)).equal(7);
+      expect(await token.balanceOf(reserve.address)).equal(tokensRedeemed);
 
       expect(await usdc.balanceOf(user1.address)).equal(
-        INITIAL_USDC + 10 + 3 + 4
+        INITIAL_USDC + 10 + tokensRedeemed
       );
       expect(await usdc.balanceOf(user2.address)).equal(INITIAL_USDC - 10);
-      expect(await usdc.balanceOf(reserve.address)).equal(INITIAL_USDC - 7);
+      expect(await usdc.balanceOf(reserve.address)).equal(
+        INITIAL_USDC - tokensRedeemed
+      );
     });
   });
 });
