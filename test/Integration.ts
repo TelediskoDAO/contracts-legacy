@@ -34,6 +34,8 @@ const INITIAL_USDC = 1000;
 describe("Integration", async () => {
   let snapshotId: string;
   let offerDurationDays: number;
+  let redemptionStartDays: number;
+  let redemptionWindowDays: number;
 
   let voting: Voting;
   let token: TelediskoToken;
@@ -73,6 +75,9 @@ describe("Integration", async () => {
     investorStatus = await registry.INVESTOR_STATUS();
 
     offerDurationDays = (await market.offerDuration()).toNumber() / DAY;
+    redemptionStartDays = (await redemption.redemptionStart()).toNumber() / DAY;
+    redemptionWindowDays =
+      (await redemption.redemptionWindow()).toNumber() / DAY;
 
     await usdc.mint(reserve.address, INITIAL_USDC);
     await usdc.connect(reserve).approve(market.address, INITIAL_USDC);
@@ -713,7 +718,7 @@ describe("Integration", async () => {
       ).to.changeTokenBalances(usdc, [user1, user3], [2, -2]);
 
       // Make the tokens redeemable
-      await timeTravel(60, true);
+      await timeTravel(redemptionStartDays, true);
 
       expect(await redemption.redeemableBalance(user1.address)).equal(10);
       expect(await market.withdrawableBalanceOf(user1.address)).equal(4);
@@ -736,6 +741,27 @@ describe("Integration", async () => {
       expect(await usdc.balanceOf(market.address)).equal(0);
 
       await expect(market.connect(user1).redeem(4)).revertedWith(
+        "Redemption controller: amount exceeds redeemable balance"
+      );
+
+      // User 2 exits all their tokens to the secondary market
+      await market.connect(user2).makeOffer(90);
+      await timeTravel(offerDurationDays, true);
+      await market.connect(user2).withdraw(free2.address, 90);
+      await timeTravel(redemptionStartDays - offerDurationDays, true);
+
+      // then tries to redeem but fails because not enough balance.
+      await expect(market.connect(user2).redeem(90)).revertedWith(
+        "ERC20: transfer amount exceeds balance"
+      );
+
+      // then tries to redeem 6.
+      await market.connect(user2).redeem(6);
+
+      // but fails to redeem because the redeem window passed
+      await timeTravel(redemptionWindowDays, true);
+
+      await expect(market.connect(user2).redeem(4)).revertedWith(
         "Redemption controller: amount exceeds redeemable balance"
       );
     });

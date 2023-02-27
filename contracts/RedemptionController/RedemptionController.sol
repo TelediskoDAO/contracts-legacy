@@ -26,15 +26,16 @@ contract RedemptionController is
     Initializable,
     AccessControlUpgradeable
 {
-    uint256 constant TIME_TO_REDEMPTION = 60 days;
-    uint256 redemptionPeriod;
+    uint256 public redemptionStart;
+    uint256 public redemptionWindow;
 
     bytes32 public constant TOKEN_MANAGER_ROLE =
         keccak256("TOKEN_MANAGER_ROLE");
 
     function initialize() public initializer {
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        redemptionPeriod = 10 days;
+        redemptionStart = 60 days;
+        redemptionWindow = 10 days;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -78,7 +79,7 @@ contract RedemptionController is
             amount,
             mintTimestamp,
             redemptionStarts,
-            redemptionStarts + redemptionPeriod
+            redemptionStarts + redemptionWindow
         );
         _redeemables[account].push(offerRedeemable);
     }
@@ -109,7 +110,7 @@ contract RedemptionController is
 
         // Calculate when the next redemption starts, that is today plus the
         // time a contributor has to wait to redeem the tokens
-        uint256 redemptionStarts = block.timestamp + TIME_TO_REDEMPTION;
+        uint256 redemptionStarts = block.timestamp + redemptionStart;
 
         // Load the mint budgets for that account
         MintBudget[] storage mintBudgets = _mintBudgets[account];
