@@ -29,6 +29,9 @@ contract RedemptionController is
     uint256 public redemptionStart;
     uint256 public redemptionWindow;
 
+    uint256 public maxDaysInThePast;
+    uint256 public activityWindow;
+
     bytes32 public constant TOKEN_MANAGER_ROLE =
         keccak256("TOKEN_MANAGER_ROLE");
 
@@ -36,6 +39,8 @@ contract RedemptionController is
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         redemptionStart = 60 days;
         redemptionWindow = 10 days;
+        maxDaysInThePast = 30 days * 15;
+        activityWindow = 30 days * 3;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -98,9 +103,9 @@ contract RedemptionController is
         ].timestamp;
 
         // User can redeem tokens minted within 3 months since last activity
-        uint256 thresholdActivity = lastActivity - 30 days * 3;
+        uint256 thresholdActivity = lastActivity - activityWindow;
         // User cannot redeem tokens that were minted earlier than 15 months ago
-        uint256 earliestTimestamp = block.timestamp - 30 days * 15;
+        uint256 earliestTimestamp = block.timestamp - maxDaysInThePast;
 
         // If thresholdActivity falls behind the 15 months threshold, we apply a
         // cutoff.

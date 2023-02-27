@@ -36,6 +36,8 @@ describe("Integration", async () => {
   let offerDurationDays: number;
   let redemptionStartDays: number;
   let redemptionWindowDays: number;
+  let redemptionMaxDaysInThePast: number;
+  let redemptionActivityWindow: number;
 
   let voting: Voting;
   let token: TelediskoToken;
@@ -78,6 +80,10 @@ describe("Integration", async () => {
     redemptionStartDays = (await redemption.redemptionStart()).toNumber() / DAY;
     redemptionWindowDays =
       (await redemption.redemptionWindow()).toNumber() / DAY;
+    redemptionMaxDaysInThePast =
+      (await redemption.maxDaysInThePast()).toNumber() / DAY;
+    redemptionActivityWindow =
+      (await redemption.activityWindow()).toNumber() / DAY;
 
     await usdc.mint(reserve.address, INITIAL_USDC);
     await usdc.connect(reserve).approve(market.address, INITIAL_USDC);
@@ -755,15 +761,96 @@ describe("Integration", async () => {
         "ERC20: transfer amount exceeds balance"
       );
 
-      // then tries to redeem 6.
+      // then tries to redeem 6 and succeeds.
       await market.connect(user2).redeem(6);
 
-      // but fails to redeem because the redeem window passed
+      // then 4 after the redeem window and fails
       await timeTravel(redemptionWindowDays, true);
 
       await expect(market.connect(user2).redeem(4)).revertedWith(
         "Redemption controller: amount exceeds redeemable balance"
       );
+    });
+
+    it("Redemption edge cases", async () => {
+      await _makeContributor(user1, 10);
+      await _makeContributor(user2, 0);
+
+      // pre-conditions
+      expect(await token.balanceOf(user1.address)).equal(10);
+      expect(await token.balanceOf(user2.address)).equal(0);
+      expect(await token.balanceOf(reserve.address)).equal(0);
+
+      expect(await usdc.balanceOf(user1.address)).equal(INITIAL_USDC);
+      expect(await usdc.balanceOf(user2.address)).equal(INITIAL_USDC);
+      expect(await usdc.balanceOf(reserve.address)).equal(INITIAL_USDC);
+
+      let daysSinceMinting = 0;
+
+      // user1 offers 10 tokens
+      await market.connect(user1).makeOffer(10);
+
+      // user2 buys
+      await market.connect(user2).matchOffer(user1.address, 10);
+
+      // user2 offers 10 tokens and offer expires
+      await market.connect(user2).makeOffer(10);
+      await timeTravel(offerDurationDays, true);
+      daysSinceMinting += offerDurationDays;
+
+      // user2 transfers 10 tokens to user1
+      await market.connect(user2).withdraw(user1.address, 10);
+
+      // 53 days later (60 since beginning) user1 redeems 3 tokens
+      await timeTravel(redemptionStartDays - offerDurationDays, true);
+      daysSinceMinting += redemptionStartDays - offerDurationDays;
+      await market.connect(user1).redeem(3);
+
+      // at the end of the redemption window, redemption of the 7 remaining tokens fails
+      await timeTravel(redemptionWindowDays, true);
+      daysSinceMinting += redemptionWindowDays;
+      await expect(market.connect(user1).redeem(7)).revertedWith(
+        "Redemption controller: amount exceeds redeemable balance"
+      );
+
+      // user1 reoffers 7 the tokens
+      await market.connect(user1).makeOffer(7);
+
+      // after 60 days, user1 redeems 4 tokens
+      await timeTravel(redemptionStartDays, true);
+      daysSinceMinting += redemptionStartDays;
+      await market.connect(user1).redeem(4);
+
+      // redemption window expires
+      await timeTravel(redemptionWindowDays, true);
+      daysSinceMinting += redemptionWindowDays;
+
+      // 30 * 15 days pass (15 more months) pass (only 13 months needed, as two months already passed)
+      await timeTravel(redemptionMaxDaysInThePast - daysSinceMinting);
+
+      // user1 offers 3 remaining tokens (after withdrawing them, as they are still in the vault)
+      await market.connect(user1).withdraw(user1.address, 3);
+      await market.connect(user1).makeOffer(3);
+
+      // 60 days later, redemption fails
+      await timeTravel(redemptionStartDays, true);
+      await expect(market.connect(user1).redeem(3)).revertedWith(
+        "Redemption controller: amount exceeds redeemable balance"
+      );
+
+      // user1 re-withdraws the tokens, sobbing
+      await market.connect(user1).withdraw(user1.address, 3);
+
+      // post-conditions
+      expect(await token.balanceOf(user1.address)).equal(3);
+      expect(await token.balanceOf(user2.address)).equal(0);
+      expect(await token.balanceOf(reserve.address)).equal(7);
+
+      expect(await usdc.balanceOf(user1.address)).equal(
+        INITIAL_USDC + 10 + 3 + 4
+      );
+      expect(await usdc.balanceOf(user2.address)).equal(INITIAL_USDC - 10);
+      expect(await usdc.balanceOf(reserve.address)).equal(INITIAL_USDC - 7);
     });
   });
 });
