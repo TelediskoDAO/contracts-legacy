@@ -718,9 +718,7 @@ describe("Integration", async () => {
       expect(await redemption.redeemableBalance(user1.address)).equal(10);
       expect(await market.withdrawableBalanceOf(user1.address)).equal(4);
 
-      // Note: user1 withdrew 4 tokens from the market. When user1 redeems their
-      // tokens the market transfers them from user1 to the reserve.
-      await market.connect(user1).redeem(4);
+      await market.connect(user1).redeem(10);
       // Chaining two changeTokenBalances seems to execute the "redeem"
       // function twice. Anyway, this second redeem should fail.
       /*
@@ -728,15 +726,17 @@ describe("Integration", async () => {
         .to.changeTokenBalances(usdc, [reserve, user1], [-4, 4]);
       */
 
-      expect(await token.balanceOf(user1.address)).equal(50 - 10);
-      expect(await usdc.balanceOf(user1.address)).equal(INITIAL_USDC + 10);
-      expect(await token.balanceOf(reserve.address)).equal(4);
-      expect(await usdc.balanceOf(reserve.address)).equal(INITIAL_USDC - 4);
+      expect(await token.balanceOf(user1.address)).equal(50 - 4 - 2 - 10);
+      expect(await usdc.balanceOf(user1.address)).equal(
+        INITIAL_USDC + 4 + 2 + 10
+      );
+      expect(await token.balanceOf(reserve.address)).equal(10);
+      expect(await usdc.balanceOf(reserve.address)).equal(INITIAL_USDC - 10);
       expect(await token.balanceOf(market.address)).equal(10 - 4 - 2 - 4);
       expect(await usdc.balanceOf(market.address)).equal(0);
 
       await expect(market.connect(user1).redeem(4)).revertedWith(
-        "InternalMarket: insufficient balance"
+        "Redemption controller: amount exceeds redeemable balance"
       );
     });
   });
