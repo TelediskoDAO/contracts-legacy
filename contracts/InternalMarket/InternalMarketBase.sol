@@ -34,19 +34,11 @@ contract InternalMarketBase {
     IStdReference public priceOracle;
 
     address public reserve;
-    uint256 public offerDuration;
+    uint256 public offerDuration = 7 days;
 
     mapping(address => Offers) internal _offers;
 
     mapping(address => uint256) internal _vaultContributors;
-
-    function _initialize(
-        IERC20 _daoToken,
-        uint256 _offerDuration
-    ) internal virtual {
-        daoToken = _daoToken;
-        offerDuration = _offerDuration;
-    }
 
     function _enqueue(
         Offers storage offers,
@@ -175,11 +167,14 @@ contract InternalMarketBase {
 
     function _redeem(address from, uint256 amount) internal virtual {
         uint256 withdrawableBalance = withdrawableBalanceOf(from);
-        require(
-            withdrawableBalance > 0,
-            "InternalMarket: insufficient balance"
-        );
-        _withdraw(from, reserve, amount);
+        if (withdrawableBalance < amount) {
+            uint256 difference = amount - withdrawableBalance;
+            daoToken.transferFrom(from, reserve, difference);
+            _withdraw(from, reserve, withdrawableBalance);
+        } else {
+            _withdraw(from, reserve, amount);
+        }
+
         exchangeToken.transferFrom(reserve, from, _convertToUSDC(amount));
         redemptionController.afterRedeem(from, amount);
     }

@@ -1,4 +1,4 @@
-import { ethers, network, upgrades } from "hardhat";
+import { ethers, network } from "hardhat";
 import { FakeContract, smock } from "@defi-wonderland/smock";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
@@ -14,7 +14,7 @@ import {
   IStdReference,
 } from "../typechain";
 import { parseEther } from "ethers/lib/utils";
-import internal from "stream";
+import { any } from "hardhat/internal/core/params/argumentTypes";
 
 chai.use(smock.matchers);
 chai.use(solidity);
@@ -50,10 +50,7 @@ describe("InternalMarket", async () => {
       "InternalMarket",
       deployer
     )) as InternalMarket__factory;
-
-    internalMarket = (await upgrades.deployProxy(InternalMarketFactory, [
-      token.address,
-    ])) as InternalMarket;
+    internalMarket = await InternalMarketFactory.deploy(token.address);
 
     redemption = await smock.fake("IRedemptionController");
     stdReference = await smock.fake("IStdReference");
@@ -411,10 +408,30 @@ describe("InternalMarket", async () => {
             );
           });
 
-          it("should fail when the user redeems 60 tokens", async () => {
-            await expect(internalMarket.connect(alice).redeem(60)).revertedWith(
-              ""
-            );
+          describe("when the user redeems 60 tokens", async () => {
+            beforeEach(async () => {
+              await internalMarket.connect(alice).redeem(60);
+            });
+
+            it("should transfer 10 tokens from alice to internal market and then to reserve", async () => {
+              expect(token.transferFrom).calledWith(
+                alice.address,
+                reserve.address,
+                10
+              );
+            });
+
+            it("should transfer 50 tokens from market to reserve", async () => {
+              expect(token.transfer).calledWith(reserve.address, 50);
+            });
+
+            it("should transfer 60 usdc from reserve to alice", async () => {
+              expect(usdc.transferFrom).calledWith(
+                reserve.address,
+                alice.address,
+                60
+              );
+            });
           });
 
           describe("when the user redeems 50 tokens", async () => {
